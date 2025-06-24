@@ -5,12 +5,15 @@
     "description": null,
     "url": "https://github.com/sumit-bhagat-2004/Automatic_Portfolio_Manager",
     "stars": 0,
-    "language": null,
-    "languages": {},
+    "language": "JavaScript",
+    "languages": {
+      "JavaScript": 26559,
+      "CSS": 3380
+    },
     "forks": 0,
     "watchers": 0,
     "open_issues": 0,
-    "updated_at": "2025-06-24T09:31:16Z"
+    "updated_at": "2025-06-24T17:23:34Z"
   },
   {
     "id": 889898580,
