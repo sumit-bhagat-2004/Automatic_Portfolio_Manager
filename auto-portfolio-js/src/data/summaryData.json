@@ -1,0 +1,152 @@
+{
+  "Automatic_Portfolio_Manager": {
+    "id": 1007627227,
+    "name": "Automatic_Portfolio_Manager",
+    "url": "https://github.com/sumit-bhagat-2004/Automatic_Portfolio_Manager",
+    "language": null,
+    "stars": 0,
+    "summary": "This project automates portfolio management tasks, likely involving tracking, analysis, and reporting. Details about the specific technologies used are missing from the provided README content.\n",
+    "tags": [],
+    "visible": true
+  },
+  "Coaching-Website": {
+    "id": 889898580,
+    "name": "Coaching-Website",
+    "url": "https://github.com/sumit-bhagat-2004/Coaching-Website",
+    "language": "CSS",
+    "stars": 0,
+    "summary": "This project is a coaching website, benavodayan.in, built and hosted on AWS.\n",
+    "tags": [],
+    "visible": true
+  },
+  "Eco-Fit": {
+    "id": 928858860,
+    "name": "Eco-Fit",
+    "url": "https://github.com/sumit-bhagat-2004/Eco-Fit",
+    "language": "HTML",
+    "stars": 0,
+    "summary": "Eco-Fit is a responsive sports and fitness website built with HTML, CSS, Python, and JavaScript that helps users track their carbon footprint and engage in eco-conscious fitness activities. The project includes features like a carbon savings calculator, user journeys, and statistical data sets.\n",
+    "tags": [],
+    "visible": true
+  },
+  "Lingua.IO_SBH": {
+    "id": 976431332,
+    "name": "Lingua.IO_SBH",
+    "url": "https://github.com/sumit-bhagat-2004/Lingua.IO_SBH",
+    "language": "JavaScript",
+    "stars": 0,
+    "summary": "Without any other information in the README, I can only provide a placeholder summary. \n\n**Summary:** Lingua.IO_-SBH is a project (likely related to language or linguistics) whose specific purpose and tech stack are not defined in the provided README content.\n",
+    "tags": [],
+    "visible": true
+  },
+  "Note.ORG_Binary": {
+    "id": 956932176,
+    "name": "Note.ORG_Binary",
+    "url": "https://github.com/sumit-bhagat-2004/Note.ORG_Binary",
+    "language": "Python",
+    "stars": 0,
+    "summary": "This project is a binary file associated with Note.ORG, likely containing compiled code or data. Without further information, the tech stack is unknown but could be C, C++, or another language depending on the Note.ORG project's core technologies.\n",
+    "tags": [],
+    "visible": true
+  },
+  "Pookie_EEWS": {
+    "id": 843107181,
+    "name": "Pookie_EEWS",
+    "url": "https://github.com/sumit-bhagat-2004/Pookie_EEWS",
+    "language": "JavaScript",
+    "stars": 0,
+    "summary": "Given the limited information, it's impossible to give a detailed summary.  However, based on typical project naming conventions (EEWS often stands for Early Earthquake Warning System), a plausible 1-2 line summary is:\n\n\"Pookie_EEWS is likely an Early Earthquake Warning System project.  The tech stack is unknown, as no further information is provided.\"\n",
+    "tags": [],
+    "visible": true
+  },
+  "QR-Generator-and-Scanner": {
+    "id": 932308614,
+    "name": "QR-Generator-and-Scanner",
+    "url": "https://github.com/sumit-bhagat-2004/QR-Generator-and-Scanner",
+    "language": "HTML",
+    "stars": 0,
+    "summary": "This project is a QR code generator and scanner, presumably built using web technologies (though the README provides no further details on tech stack).\n",
+    "tags": [],
+    "visible": true
+  },
+  "QuickEat_Innovocon": {
+    "id": 942418755,
+    "name": "QuickEat_Innovocon",
+    "url": "https://github.com/sumit-bhagat-2004/QuickEat_Innovocon",
+    "language": null,
+    "stars": 0,
+    "summary": "QuickEat is an AI-driven canteen management system that enables pre-ordering, automated table allocation, and real-time menu updates, built with a tech stack including React, Python, Flask, AWS Lambda, DynamoDB, and other MERN technologies.\n",
+    "tags": [],
+    "visible": true
+  },
+  "Sentiment-Analyser": {
+    "id": 931550710,
+    "name": "Sentiment-Analyser",
+    "url": "https://github.com/sumit-bhagat-2004/Sentiment-Analyser",
+    "language": "Python",
+    "stars": 0,
+    "summary": "This project is a sentiment analyzer, likely built using Python (or a similar language), that determines the emotional tone (positive, negative, or neutral) of text.\n",
+    "tags": [],
+    "visible": true
+  },
+  "SIH-2024-Smart-Yoga-Mat": {
+    "id": 863003322,
+    "name": "SIH-2024-Smart-Yoga-Mat",
+    "url": "https://github.com/sumit-bhagat-2004/SIH-2024-Smart-Yoga-Mat",
+    "language": "Python",
+    "stars": 0,
+    "summary": "Given the README content \"404: Not Found\", I cannot provide a summary. It indicates that the requested resource (the README file) does not exist. Therefore, there's no information available about the project to summarize.\n",
+    "tags": [],
+    "visible": true
+  },
+  "SkillSwap_H4B": {
+    "id": 968525590,
+    "name": "SkillSwap_H4B",
+    "url": "https://github.com/sumit-bhagat-2004/SkillSwap_H4B",
+    "language": "JavaScript",
+    "stars": 0,
+    "summary": "SkillSwap is a web platform for skill-based bartering, intelligently matching users with machine learning using a React frontend, Node.js backend, and Python-based ML microservice.\n",
+    "tags": [],
+    "visible": true
+  },
+  "sumit-bhagat-2004": {
+    "id": 831921685,
+    "name": "sumit-bhagat-2004",
+    "url": "https://github.com/sumit-bhagat-2004/sumit-bhagat-2004",
+    "language": null,
+    "stars": 0,
+    "summary": "This README describes Sumit Bhagat, a full-stack developer and cloud enthusiast, showcasing his skills in web development (HTML, CSS, React), cloud technologies (AWS, GCP), and programming languages like JavaScript, Python, and Java. He's actively learning ML and building open-source projects.\n",
+    "tags": [],
+    "visible": true
+  },
+  "TaskFlow.ai_H4B": {
+    "id": 1005608334,
+    "name": "TaskFlow.ai_H4B",
+    "url": "https://github.com/sumit-bhagat-2004/TaskFlow.ai_H4B",
+    "language": "JavaScript",
+    "stars": 0,
+    "summary": "This project, TaskFlow.ai_H4B, is a task automation and management tool likely leveraging AI (given the name TaskFlow.ai), but further details are unavailable without additional information from the README.\n",
+    "tags": [],
+    "visible": true
+  },
+  "underdogs-academy-of-technology": {
+    "id": 785701315,
+    "name": "underdogs-academy-of-technology",
+    "url": "https://github.com/sumit-bhagat-2004/underdogs-academy-of-technology",
+    "language": "HTML",
+    "stars": 0,
+    "summary": "This project is a website built by the \"Underdogs Academy of Technology\" team, specifically \"Team Moon Knight,\" but lacks further detail on its purpose or technology.\n",
+    "tags": [],
+    "visible": true
+  },
+  "Wedding_Card": {
+    "id": 963339002,
+    "name": "Wedding_Card",
+    "url": "https://github.com/sumit-bhagat-2004/Wedding_Card",
+    "language": "HTML",
+    "stars": 0,
+    "summary": "This project likely provides a way to add and manage comments, but the README is too sparse to determine the tech stack or more specific functionality.\n",
+    "tags": [],
+    "visible": true
+  }
+}

@@ -1,0 +1,266 @@
+[
+  {
+    "id": 1007627227,
+    "name": "Automatic_Portfolio_Manager",
+    "description": null,
+    "url": "https://github.com/sumit-bhagat-2004/Automatic_Portfolio_Manager",
+    "stars": 0,
+    "language": null,
+    "languages": {},
+    "forks": 0,
+    "watchers": 0,
+    "open_issues": 0,
+    "updated_at": "2025-06-24T09:31:16Z"
+  },
+  {
+    "id": 889898580,
+    "name": "Coaching-Website",
+    "description": "Coaching Website hosted on AWS and deployed at www.benavodayan.in",
+    "url": "https://github.com/sumit-bhagat-2004/Coaching-Website",
+    "stars": 0,
+    "language": "CSS",
+    "languages": {
+      "CSS": 23186,
+      "HTML": 12651
+    },
+    "forks": 0,
+    "watchers": 0,
+    "open_issues": 0,
+    "updated_at": "2024-11-17T14:33:18Z"
+  },
+  {
+    "id": 928858860,
+    "name": "Eco-Fit",
+    "description": null,
+    "url": "https://github.com/sumit-bhagat-2004/Eco-Fit",
+    "stars": 0,
+    "language": "HTML",
+    "languages": {
+      "HTML": 52749,
+      "CSS": 44990,
+      "JavaScript": 21023
+    },
+    "forks": 2,
+    "watchers": 0,
+    "open_issues": 1,
+    "updated_at": "2025-02-12T15:35:44Z"
+  },
+  {
+    "id": 976431332,
+    "name": "Lingua.IO_SBH",
+    "description": null,
+    "url": "https://github.com/sumit-bhagat-2004/Lingua.IO_SBH",
+    "stars": 0,
+    "language": "JavaScript",
+    "languages": {
+      "JavaScript": 20184,
+      "Python": 12108,
+      "TypeScript": 2758,
+      "CSS": 629,
+      "Dockerfile": 411,
+      "HTML": 361
+    },
+    "forks": 0,
+    "watchers": 0,
+    "open_issues": 0,
+    "updated_at": "2025-05-03T07:14:38Z"
+  },
+  {
+    "id": 956932176,
+    "name": "Note.ORG_Binary",
+    "description": null,
+    "url": "https://github.com/sumit-bhagat-2004/Note.ORG_Binary",
+    "stars": 0,
+    "language": "Python",
+    "languages": {
+      "Python": 23629186,
+      "C": 377518,
+      "Cython": 117839,
+      "C++": 85980,
+      "JavaScript": 82470,
+      "Fortran": 39272,
+      "CSS": 7341,
+      "HTML": 5507,
+      "Roff": 5377,
+      "Meson": 4589,
+      "Dockerfile": 284,
+      "Lua": 139
+    },
+    "forks": 1,
+    "watchers": 0,
+    "open_issues": 0,
+    "updated_at": "2025-04-04T19:55:04Z"
+  },
+  {
+    "id": 843107181,
+    "name": "Pookie_EEWS",
+    "description": null,
+    "url": "https://github.com/sumit-bhagat-2004/Pookie_EEWS",
+    "stars": 0,
+    "language": "JavaScript",
+    "languages": {
+      "JavaScript": 3271,
+      "Python": 3174,
+      "HTML": 2515,
+      "C++": 1949,
+      "CSS": 1832
+    },
+    "forks": 1,
+    "watchers": 0,
+    "open_issues": 0,
+    "updated_at": "2024-08-16T05:10:37Z"
+  },
+  {
+    "id": 932308614,
+    "name": "QR-Generator-and-Scanner",
+    "description": null,
+    "url": "https://github.com/sumit-bhagat-2004/QR-Generator-and-Scanner",
+    "stars": 0,
+    "language": "HTML",
+    "languages": {
+      "HTML": 4543,
+      "JavaScript": 3588,
+      "CSS": 626
+    },
+    "forks": 0,
+    "watchers": 0,
+    "open_issues": 0,
+    "updated_at": "2025-02-13T17:58:28Z"
+  },
+  {
+    "id": 942418755,
+    "name": "QuickEat_Innovocon",
+    "description": null,
+    "url": "https://github.com/sumit-bhagat-2004/QuickEat_Innovocon",
+    "stars": 0,
+    "language": null,
+    "languages": {
+      "Python": 2719156,
+      "JavaScript": 61358,
+      "CSS": 1880,
+      "HTML": 1096
+    },
+    "forks": 0,
+    "watchers": 0,
+    "open_issues": 0,
+    "updated_at": "2025-03-04T04:38:25Z"
+  },
+  {
+    "id": 931550710,
+    "name": "Sentiment-Analyser",
+    "description": null,
+    "url": "https://github.com/sumit-bhagat-2004/Sentiment-Analyser",
+    "stars": 0,
+    "language": "Python",
+    "languages": {
+      "Python": 2373,
+      "CSS": 562,
+      "JavaScript": 560,
+      "HTML": 539
+    },
+    "forks": 0,
+    "watchers": 0,
+    "open_issues": 0,
+    "updated_at": "2025-02-12T14:11:42Z"
+  },
+  {
+    "id": 863003322,
+    "name": "SIH-2024-Smart-Yoga-Mat",
+    "description": "This repository contains all information regarding Problem Statement 1556 of SIH 2024 and its Implementation by Team System 404",
+    "url": "https://github.com/sumit-bhagat-2004/SIH-2024-Smart-Yoga-Mat",
+    "stars": 0,
+    "language": "Python",
+    "languages": {
+      "Python": 4981118,
+      "HTML": 30063,
+      "CSS": 16845,
+      "JavaScript": 16104,
+      "SCSS": 15651
+    },
+    "forks": 1,
+    "watchers": 0,
+    "open_issues": 0,
+    "updated_at": "2024-09-29T15:25:00Z"
+  },
+  {
+    "id": 968525590,
+    "name": "SkillSwap_H4B",
+    "description": null,
+    "url": "https://github.com/sumit-bhagat-2004/SkillSwap_H4B",
+    "stars": 0,
+    "language": "JavaScript",
+    "languages": {
+      "JavaScript": 142136,
+      "Python": 7499,
+      "HTML": 724,
+      "CSS": 684
+    },
+    "forks": 0,
+    "watchers": 0,
+    "open_issues": 0,
+    "updated_at": "2025-04-20T09:34:10Z"
+  },
+  {
+    "id": 831921685,
+    "name": "sumit-bhagat-2004",
+    "description": "Its about me.",
+    "url": "https://github.com/sumit-bhagat-2004/sumit-bhagat-2004",
+    "stars": 0,
+    "language": null,
+    "languages": {},
+    "forks": 0,
+    "watchers": 0,
+    "open_issues": 0,
+    "updated_at": "2025-03-16T17:48:41Z"
+  },
+  {
+    "id": 1005608334,
+    "name": "TaskFlow.ai_H4B",
+    "description": null,
+    "url": "https://github.com/sumit-bhagat-2004/TaskFlow.ai_H4B",
+    "stars": 0,
+    "language": "JavaScript",
+    "languages": {
+      "JavaScript": 88733,
+      "Python": 9897,
+      "CSS": 4603,
+      "HTML": 1946,
+      "Dockerfile": 887
+    },
+    "forks": 3,
+    "watchers": 0,
+    "open_issues": 0,
+    "updated_at": "2025-06-23T08:28:49Z"
+  },
+  {
+    "id": 785701315,
+    "name": "underdogs-academy-of-technology",
+    "description": "website by team underdogs",
+    "url": "https://github.com/sumit-bhagat-2004/underdogs-academy-of-technology",
+    "stars": 0,
+    "language": "HTML",
+    "languages": {
+      "HTML": 90592,
+      "CSS": 3359
+    },
+    "forks": 0,
+    "watchers": 0,
+    "open_issues": 0,
+    "updated_at": "2024-09-09T06:35:43Z"
+  },
+  {
+    "id": 963339002,
+    "name": "Wedding_Card",
+    "description": null,
+    "url": "https://github.com/sumit-bhagat-2004/Wedding_Card",
+    "stars": 0,
+    "language": "HTML",
+    "languages": {
+      "HTML": 15692
+    },
+    "forks": 0,
+    "watchers": 0,
+    "open_issues": 0,
+    "updated_at": "2025-04-19T11:43:07Z"
+  }
+]
