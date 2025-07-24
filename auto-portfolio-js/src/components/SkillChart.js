@@ -1,49 +1,55 @@
 'use client';
-import { Pie } from 'react-chartjs-2';
-import { Chart as ChartJS, ArcElement, Tooltip, Legend } from 'chart.js';
+import React from 'react';
+import { PieChart, Pie, Cell, Tooltip, ResponsiveContainer } from 'recharts';
 
-ChartJS.register(ArcElement, Tooltip, Legend);
+const COLORS = ['#06b6d4', '#3b82f6', '#10b981', '#f59e0b', '#8b5cf6', '#ec4899'];
+
+const RADIAN = Math.PI / 180;
+const renderCustomizedLabel = ({ cx, cy, midAngle, innerRadius, outerRadius, percent, index, payload }) => {
+  const radius = innerRadius + (outerRadius - innerRadius) * 0.5;
+  const x = cx + radius * Math.cos(-midAngle * RADIAN);
+  const y = cy + radius * Math.sin(-midAngle * RADIAN);
+
+  return (
+    <text x={x} y={y} fill="white" textAnchor={x > cx ? 'start' : 'end'} dominantBaseline="central" className="text-xs font-bold">
+      {`${(percent * 100).toFixed(0)}%`}
+    </text>
+  );
+};
 
 export default function SkillChart({ repo }) {
   if (!repo.languages || Object.keys(repo.languages).length === 0) {
-    return <div className="text-gray-400 text-sm mt-2">No language data</div>;
+    return <div className="text-muted-foreground text-sm mt-2">No language data</div>;
   }
-
-  const labels = Object.keys(repo.languages);
-  const data = Object.values(repo.languages);
-
-  const chartData = {
-    labels,
-    datasets: [
-      {
-        label: 'Language Usage (bytes)',
-        data,
-        backgroundColor: [
-          '#F87171', '#60A5FA', '#34D399', '#FBBF24', '#A78BFA',
-          '#F472B6', '#38BDF8', '#FCD34D', '#4ADE80', '#818CF8',
-        ],
-        borderColor: '#1F2937',
-        borderWidth: 1,
-      },
-    ],
-  };
-
-  // Set a fixed small size for the chart to fit 4 per screen
-  const options = {
-    responsive: false,
-    maintainAspectRatio: false,
-    width: 120,
-    height: 120,
-    plugins: {
-      legend: {
-        display: false,
-      },
-    },
-  };
+  
+  const data = Object.entries(repo.languages).map(([name, value]) => ({ name, value })).sort((a, b) => b.value - a.value);
 
   return (
-    <div className="bg-gray-900 p-2 rounded-xl mt-4 flex justify-center items-center">
-      <Pie data={chartData} width={120} height={120} options={options} />
-    </div>
+    <ResponsiveContainer width="100%" height={200}>
+      <PieChart>
+        <Tooltip
+          contentStyle={{
+            background: "rgba(20, 20, 20, 0.8)",
+            borderColor: "rgba(255, 255, 255, 0.2)",
+            borderRadius: "0.5rem",
+          }}
+          itemStyle={{ color: "#fafafa" }}
+        />
+        <Pie
+          data={data}
+          cx="50%"
+          cy="50%"
+          labelLine={false}
+          label={renderCustomizedLabel}
+          outerRadius={80}
+          fill="#8884d8"
+          dataKey="value"
+        >
+          {data.map((entry, index) => (
+            <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
+          ))}
+        </Pie>
+      </PieChart>
+    </ResponsiveContainer>
   );
 }

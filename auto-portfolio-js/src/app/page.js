@@ -1,239 +1,222 @@
 'use client';
-import { useEffect, useState } from 'react';
-// For client-side routing, use next/navigation's useRouter for Next.js
-// If you want classic react-router-dom, you would use <BrowserRouter> and <Routes> in a CRA/Vite app
+import React, { useEffect, useState, useRef } from 'react';
+import dynamic from 'next/dynamic'; // Import dynamic
+import { motion, useScroll, useTransform } from 'framer-motion';
+import { Github, Linkedin, Twitter, Mail, ExternalLink, Star } from 'lucide-react';
+import { TypeAnimation } from 'react-type-animation';
+import { Button } from '@/components/ui/Button';
+import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/Card';
+import { cn } from '@/lib/utils';
 
-import SkillChart from '../components/SkillChart';
+// Dynamically import SkillChart to prevent SSR issues with recharts
+const SkillChart = dynamic(() => import('../components/SkillChart'), { 
+    ssr: false,
+    loading: () => <div className="h-[200px] w-full flex items-center justify-center"><p>Loading chart...</p></div>
+});
+
+
+// Background component with animated grid
+const AnimatedBackground = () => (
+  <div className="absolute inset-0 -z-10 h-full w-full bg-background bg-[linear-gradient(to_right,#8080800a_1px,transparent_1px),linear-gradient(to_bottom,#8080800a_1px,transparent_1px)] bg-[size:14px_24px]">
+    <div className="absolute left-0 right-0 top-0 -z-10 m-auto h-[310px] w-[310px] rounded-full bg-fuchsia-400 opacity-20 blur-[100px]"></div>
+  </div>
+);
+
+// Project Card with 3D tilt effect
+const ProjectCard = ({ repo }) => {
+    const ref = useRef(null);
+    const [rotateX, setRotateX] = useState(0);
+    const [rotateY, setRotateY] = useState(0);
+
+    const handleMouseMove = (e) => {
+        if (!ref.current) return;
+        const rect = ref.current.getBoundingClientRect();
+        const width = rect.width;
+        const height = rect.height;
+        const mouseX = e.clientX - rect.left;
+        const mouseY = e.clientY - rect.top;
+        const xPct = mouseX / width - 0.5;
+        const yPct = mouseY / height - 0.5;
+        setRotateX(yPct * -14);
+        setRotateY(xPct * 14);
+    };
+
+    const handleMouseLeave = () => {
+        setRotateX(0);
+        setRotateY(0);
+    };
+
+    return (
+        <motion.div
+            ref={ref}
+            onMouseMove={handleMouseMove}
+            onMouseLeave={handleMouseLeave}
+            style={{
+                transformStyle: "preserve-3d",
+                transform: `rotateX(${rotateX}deg) rotateY(${rotateY}deg)`,
+            }}
+            className="relative flex-shrink-0"
+        >
+            <Card className="w-full max-w-sm h-[420px] bg-card/60 backdrop-blur-sm border-white/10 rounded-2xl shadow-lg flex flex-col justify-between transition-all duration-300 ease-out">
+                <div style={{ transform: "translateZ(50px)" }} className="absolute inset-4 rounded-xl bg-card/80 shadow-inner" />
+                <CardHeader className="z-10">
+                    <div className="flex justify-between items-center">
+                        <CardTitle className="text-2xl font-bold text-primary">{repo.name}</CardTitle>
+                        <a href={repo.url} target="_blank" rel="noopener noreferrer" className="text-muted-foreground hover:text-primary transition-colors">
+                            <ExternalLink size={20} />
+                        </a>
+                    </div>
+                    <CardDescription className="h-12 overflow-hidden">{repo.description || repo.summary}</CardDescription>
+                </CardHeader>
+                <CardContent className="z-10 flex-grow flex flex-col justify-center items-center">
+                    <SkillChart repo={repo} />
+                </CardContent>
+                <div className="z-10 p-6 pt-0 flex justify-between items-center text-sm text-muted-foreground">
+                    <div className="flex items-center gap-2">
+                        <Star className="text-yellow-400" size={16} />
+                        <span>{repo.stars}</span>
+                    </div>
+                    <span>{repo.language}</span>
+                </div>
+            </Card>
+        </motion.div>
+    );
+};
+
 
 export default function Home() {
   const [repos, setRepos] = useState([]);
-  const [error, setError] = useState(null);
   const [socials, setSocials] = useState({});
+  const [error, setError] = useState(null);
+
+  const scrollRef = useRef(null);
+  const { scrollYProgress } = useScroll({ container: scrollRef });
+  const scaleX = useTransform(scrollYProgress, [0, 1], ["0%", "100%"]);
 
   useEffect(() => {
-    async function loadRepos() {
+    async function loadData() {
       try {
-        const res = await fetch('/api/summary-data');
-        const data = await res.json();
+        const [repoRes, socialRes] = await Promise.all([
+          fetch('/api/summary-data'),
+          fetch('/api/socials'),
+        ]);
+        const repoData = await repoRes.json();
+        const socialData = await socialRes.json();
 
-        if (!data || typeof data !== 'object') {
+        if (repoData && typeof repoData === 'object') {
+          setRepos(Object.values(repoData).filter(repo => repo.visible !== false));
+        } else {
           setError('Invalid summary data');
-          return;
         }
-
-        const repoList = Object.values(data).filter(repo => repo.visible !== false);
-        setRepos(repoList);
+        setSocials(socialData);
       } catch (err) {
-        console.error('Failed to load summary data:', err);
-        setError('Failed to load project summaries');
+        setError('Failed to load data');
+        console.error(err);
       }
     }
-
-    loadRepos();
+    loadData();
   }, []);
-
-  useEffect(() => {
-    async function loadSocials() {
-      const res = await fetch('/api/socials');
-      const data = await res.json();
-      setSocials(data);
-    }
-    loadSocials();
-  }, []);
-
-  // Simple navigation scroll (for demo, replace with Next.js routing for real pages)
-  const scrollToSection = (id) => {
-    const el = document.getElementById(id);
-    if (el) el.scrollIntoView({ behavior: 'smooth' });
+  
+  const socialIcons = {
+    github: <Github />,
+    linkedin: <Linkedin />,
+    twitter: <Twitter />,
   };
 
   return (
-    <main className="min-h-screen bg-gray-900 text-white p-0">
-      {/* Navbar */}
-      <nav className="w-full bg-gray-950/90 shadow-lg sticky top-0 z-50">
-        <div className="max-w-7xl mx-auto flex items-center justify-between px-6 py-4">
-          <span className="text-2xl font-bold text-blue-400 cursor-pointer" onClick={() => scrollToSection('home')}>
-            Sumit Bhagat
-          </span>
-          <div className="flex gap-6 text-lg font-medium">
-            <button onClick={() => scrollToSection('about')} className="hover:text-blue-400 transition">About</button>
-            <button onClick={() => scrollToSection('projects')} className="hover:text-blue-400 transition">Projects</button>
-            <button onClick={() => scrollToSection('testimonials')} className="hover:text-blue-400 transition">Testimonials</button>
-            <button onClick={() => scrollToSection('blog')} className="hover:text-blue-400 transition">Blog</button>
-            <button onClick={() => scrollToSection('contact')} className="hover:text-blue-400 transition">Contact</button>
-            {Object.entries(socials).map(([platform, url]) =>
-              url ? (
-                <a
-                  key={platform}
-                  href={url}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="text-blue-400 hover:underline capitalize ml-2"
-                >
-                  {platform}
-                </a>
-              ) : null
-            )}
-          </div>
-        </div>
-      </nav>
+    <div ref={scrollRef} className="h-screen w-full overflow-y-auto overflow-x-hidden snap-y snap-mandatory">
+      <motion.div style={{ scaleX }} className="fixed top-0 left-0 right-0 h-1 bg-primary z-50" />
+      <AnimatedBackground />
 
-      {/* Hero/About Section */}
-      <section
-        id="home"
-        className="min-h-screen flex flex-col justify-start pt-24 px-4 bg-gradient-to-b from-gray-900 to-gray-800 snap-start"
-      >
-        <div className="flex flex-col items-center">
+      {/* Hero Section */}
+      <section id="home" className="h-screen w-full flex flex-col justify-center items-center text-center p-4 snap-start">
+        <motion.div
+          initial={{ opacity: 0, y: -20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.8 }}
+        >
           <img
             src="https://avatars.githubusercontent.com/u/119393675?v=4"
-            alt="Profile"
-            className="w-32 h-32 rounded-full border-4 border-blue-400 mb-4 shadow-lg"
+            alt="Sumit Bhagat"
+            className="w-32 h-32 rounded-full border-4 border-primary/20 mb-6 shadow-2xl mx-auto"
           />
-          <h1 className="text-4xl font-bold mb-2 text-center">Hi, I'm Sumit Bhagat</h1>
-          <p className="text-lg text-gray-300 max-w-2xl text-center mb-4">
-            Full-stack developer, cloud enthusiast, and open-source contributor. I love building web apps, exploring new tech, and sharing knowledge.
-          </p>
-          <div className="flex flex-wrap gap-4 justify-center mt-2">
-            {Object.entries(socials).map(([platform, url]) =>
-              url ? (
-                <a
-                  key={platform}
-                  href={url}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="text-blue-400 hover:underline capitalize text-lg font-medium transition-colors duration-150"
-                >
-                  {platform}
-                </a>
-              ) : null
-            )}
+          <h1 className="text-5xl md:text-7xl font-bold mb-4 bg-clip-text text-transparent bg-gradient-to-b from-neutral-50 to-neutral-400 bg-opacity-50">
+            Sumit Bhagat
+          </h1>
+          <TypeAnimation
+            sequence={[
+              'A Full-Stack Developer.',
+              2000,
+              'A Cloud Enthusiast.',
+              2000,
+              'An Open-Source Contributor.',
+              2000,
+            ]}
+            wrapper="p"
+            speed={50}
+            className="text-xl md:text-2xl text-muted-foreground mb-8"
+            repeat={Infinity}
+          />
+          <div className="flex justify-center gap-4">
+             <a href={socials.email}>
+                <Button size="lg">
+                    <Mail className="mr-2 h-4 w-4" /> Contact Me
+                </Button>
+             </a>
+             <a href={socials.github} target="_blank" rel="noopener noreferrer">
+                <Button size="lg" variant="outline">
+                    <Github className="mr-2 h-4 w-4" /> GitHub
+                </Button>
+             </a>
           </div>
-        </div>
-      </section>
-
-      {/* About Section */}
-      <section
-        id="about"
-        className="max-w-4xl mx-auto min-h-screen flex flex-col justify-start pt-24 px-4 snap-start"
-      >
-        <h2 className="text-2xl font-bold mb-4 text-blue-300">About Me</h2>
-        <p className="text-gray-300 text-lg mb-2">
-          I'm passionate about building scalable web applications and learning new technologies. My main stack includes JavaScript, Python, React, and cloud platforms like AWS and GCP.
-        </p>
-        <p className="text-gray-400">
-          I enjoy collaborating on open-source projects, writing technical blogs, and helping others grow in tech. Let's connect!
-        </p>
+        </motion.div>
       </section>
 
       {/* Projects Section */}
-      <section
-        id="projects"
-        className="max-w-7xl mx-auto min-h-screen flex flex-col justify-start pt-24 py-12 px-4 snap-start"
-      >
-        <h2 className="text-3xl font-bold mb-8 text-center text-blue-300">🚀 My Projects</h2>
-        {error && <div className="bg-red-700 text-white p-4 mb-6 rounded">{error}</div>}
-
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-8">
-          {repos.map((repo, idx) => (
-            <div
-              key={repo.id || repo.name}
-              className={`
-                flex flex-col justify-between h-full
-                rounded-2xl shadow-lg transition
-                p-6 mb-2
-                ${idx % 2 === 0 ? 'bg-gray-800' : 'bg-gray-700'}
-                hover:scale-[1.03] hover:shadow-2xl
-              `}
+      <section id="projects" className="min-h-screen w-full flex flex-col justify-center items-center p-4 md:p-8 snap-start">
+        <h2 className="text-4xl font-bold mb-4 text-center">My Work</h2>
+        <p className="text-muted-foreground mb-12 text-center max-w-2xl">Here are some of the projects I've been working on. Hover over them for a little magic.</p>
+        
+        {error && <div className="text-destructive">{error}</div>}
+        
+        <div className="w-full overflow-x-auto pb-8 snap-x snap-mandatory">
+            <motion.div 
+                className="flex gap-8 px-8"
+                initial={{ opacity: 0 }}
+                whileInView={{ opacity: 1 }}
+                viewport={{ once: true, amount: 0.2 }}
+                transition={{ staggerChildren: 0.2 }}
             >
-              <div>
-                <h3 className="text-xl font-bold mb-2 text-blue-300">{repo.name}</h3>
-                {repo.description && (
-                  <p className="text-gray-300 mb-2">{repo.description}</p>
-                )}
-                <p className="text-gray-400 mb-2">{repo.summary}</p>
-                <div className="flex flex-wrap gap-2 text-sm text-gray-400 mb-2">
-                  <span>⭐ {repo.stars}</span>
-                  <span>• {repo.language}</span>
-                </div>
-                {repo.tags?.length > 0 && (
-                  <div className="flex flex-wrap gap-1 text-xs text-gray-400 mb-2">
-                    {repo.tags.map(tag => (
-                      <span key={tag} className="bg-gray-600 px-2 py-0.5 rounded">{tag}</span>
-                    ))}
-                  </div>
-                )}
-                <div className="text-xs text-gray-500 mb-1">
-                  Forks: {repo.forks} | Watchers: {repo.watchers} | Issues: {repo.open_issues}
-                </div>
-                <div className="text-xs text-gray-500 mb-2">
-                  Last updated: {repo.updated_at ? new Date(repo.updated_at).toLocaleString() : 'N/A'}
-                </div>
-              </div>
-              <div className="flex justify-center mt-4">
-                <SkillChart repo={repo} />
-              </div>
-            </div>
-          ))}
+                {repos.map((repo) => (
+                    <ProjectCard key={repo.id || repo.name} repo={repo} />
+                ))}
+            </motion.div>
         </div>
       </section>
 
-      {/* Testimonials Section (placeholder) */}
-      <section
-        id="testimonials"
-        className="max-w-4xl mx-auto min-h-screen flex flex-col justify-start pt-24 py-12 px-4 snap-start"
-      >
-        <h2 className="text-2xl font-bold mb-4 text-blue-300">Testimonials</h2>
-        <div className="bg-gray-800 rounded-xl p-6 text-gray-300 text-center">
-          <p className="italic">"Sumit is a fantastic developer and team player!"</p>
-          <p className="mt-2 text-sm text-gray-400">- Jane Doe, Senior Engineer</p>
-        </div>
-        <div className="bg-gray-800 rounded-xl p-6 text-gray-300 text-center mt-4">
-          <p className="italic">"Always delivers high-quality work on time."</p>
-          <p className="mt-2 text-sm text-gray-400">- John Smith, Project Manager</p>
-        </div>
-      </section>
-
-      {/* Blog Section (placeholder) */}
-      <section
-        id="blog"
-        className="max-w-4xl mx-auto min-h-screen flex flex-col justify-start pt-24 py-12 px-4 snap-start"
-      >
-        <h2 className="text-2xl font-bold mb-4 text-blue-300">Blog</h2>
-        <div className="bg-gray-800 rounded-xl p-6 text-gray-300 text-center">
-          <p className="italic">Blog coming soon! Stay tuned for articles on web development, cloud, and more.</p>
-        </div>
-      </section>
-
-      {/* Contact Section */}
-      <section
-        id="contact"
-        className="max-w-2xl mx-auto min-h-screen flex flex-col justify-start pt-24 py-12 px-4 snap-start"
-      >
-        <h2 className="text-2xl font-bold mb-4 text-blue-300">Contact</h2>
-        <p className="text-gray-300 mb-4">
-          Want to work together or have a question? Reach out via email or connect on social media!
+       {/* Contact Section */}
+      <section id="contact" className="h-screen w-full flex flex-col justify-center items-center text-center p-4 snap-start">
+        <h2 className="text-4xl font-bold mb-4">Let's Connect</h2>
+        <p className="text-muted-foreground mb-8 max-w-lg">
+          I'm currently looking for new opportunities. Whether you have a question or just want to say hi, I'll try my best to get back to you!
         </p>
-        <div className="flex flex-wrap gap-4">
-          {Object.entries(socials).map(([platform, url]) =>
-            url ? (
-              <a
-                key={platform}
-                href={url}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="text-blue-400 hover:underline capitalize text-lg font-medium transition-colors duration-150"
-              >
-                {platform}
-              </a>
-            ) : null
-          )}
+        <div className="flex gap-6">
+            {Object.entries(socials).map(([platform, url]) =>
+              url && socialIcons[platform] ? (
+                <a
+                  key={platform}
+                  href={url}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="text-muted-foreground hover:text-primary transition-colors"
+                  aria-label={platform}
+                >
+                  {React.cloneElement(socialIcons[platform], { size: 32 })}
+                </a>
+              ) : null
+            )}
         </div>
       </section>
-    </main>
+    </div>
   );
 }
-
-// Add this to your main CSS (e.g., globals.css) if not already present:
-// html { scroll-behavior: smooth; }
-// body, main { scroll-snap-type: y mandatory; }
-// .snap-start { scroll-snap-align: start; }
