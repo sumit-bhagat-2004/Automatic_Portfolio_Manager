@@ -1,5 +1,8 @@
 import { Inter } from "next/font/google";
 import "./globals.css";
+import { Toaster } from 'sonner';
+import SmoothScrollWrapper from '@/components/SmoothScrollWrapper';
+import { CustomCursor } from '@/components/ui/custom-cursor';
 
 const inter = Inter({ subsets: ["latin"], variable: "--font-sans" });
 
@@ -12,7 +15,16 @@ export default function RootLayout({ children }) {
   return (
     <html lang="en" className="dark">
       <body className={`font-sans ${inter.variable}`}>
-        {children}
+        <CustomCursor />
+        <SmoothScrollWrapper>
+          {children}
+        </SmoothScrollWrapper>
+        <Toaster 
+          position="top-center"
+          richColors
+          closeButton
+          theme="dark"
+        />
       </body>
     </html>
   );

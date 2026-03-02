@@ -6,56 +6,121 @@ export async function GET(req) {
   const token = process.env.GITHUB_TOKEN;
   const githubPath = path.resolve(process.cwd(), 'src/data/githubData.json');
 
+  console.log('GitHub API called');
+  console.log('Username:', username ? 'Set' : 'Missing');
+  console.log('Token:', token ? 'Set (length: ' + token.length + ')' : 'Missing');
+
   if (!username || !token) {
-    return Response.json({ error: "Missing GitHub credentials." }, { status: 500 });
+    console.error('Missing GitHub credentials');
+    return Response.json({ error: "Missing GitHub credentials in .env.local" }, { status: 500 });
   }
 
   try {
-    const response = await fetch(`https://api.github.com/users/${username}/repos`, {
+    console.log('Fetching repos from GitHub...');
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), 30000); // 30 second timeout
+
+    const response = await fetch(`https://api.github.com/users/${username}/repos?per_page=100`, {
       headers: {
         Authorization: `token ${token}`,
         Accept: "application/vnd.github+json",
       },
+      signal: controller.signal,
     });
+
+    clearTimeout(timeoutId);
+    console.log('GitHub API response status:', response.status);
+
+    if (!response.ok) {
+      const errorText = await response.text();
+      console.error('GitHub API error:', response.status, errorText);
+      throw new Error(`GitHub API error: ${response.status} - ${errorText}`);
+    }
 
     const data = await response.json();
 
     if (!Array.isArray(data)) {
+      console.error('Unexpected API response format:', typeof data);
       return Response.json({ error: "Unexpected API response" }, { status: 500 });
     }
 
+    console.log(`Fetched ${data.length} repositories`);
+
     const repos = await Promise.all(
       data.map(async (repo) => {
-        const langRes = await fetch(repo.languages_url, {
-          headers: {
-            Authorization: `token ${token}`,
-          },
-        });
-        const languages = await langRes.json();
+        try {
+          const controller = new AbortController();
+          const timeoutId = setTimeout(() => controller.abort(), 15000);
+          
+          const langRes = await fetch(repo.languages_url, {
+            headers: {
+              Authorization: `token ${token}`,
+            },
+            signal: controller.signal,
+          });
+          
+          clearTimeout(timeoutId);
+          const languages = await langRes.json();
 
-        return {
-          id: repo.id,
-          name: repo.name,
-          description: repo.description,
-          url: repo.html_url,
-          stars: repo.stargazers_count,
-          language: repo.language,
-          languages, // full breakdown per repo
-          forks: repo.forks_count,
-          watchers: repo.watchers_count,
-          open_issues: repo.open_issues_count,
-          updated_at: repo.updated_at,
-        };
+          return {
+            id: repo.id,
+            name: repo.name,
+            description: repo.description,
+            url: repo.html_url,
+            stars: repo.stargazers_count,
+            language: repo.language,
+            languages, // full breakdown per repo
+            forks: repo.forks_count,
+            watchers: repo.watchers_count,
+            open_issues: repo.open_issues_count,
+            updated_at: repo.updated_at,
+          };
+        } catch (err) {
+          console.error(`Error fetching languages for ${repo.name}:`, err.message);
+          return {
+            id: repo.id,
+            name: repo.name,
+            description: repo.description,
+            url: repo.html_url,
+            stars: repo.stargazers_count,
+            language: repo.language,
+            languages: {},
+            forks: repo.forks_count,
+            watchers: repo.watchers_count,
+            open_issues: repo.open_issues_count,
+            updated_at: repo.updated_at,
+          };
+        }
       })
     );
 
     // Save to githubData.json
+    console.log('Saving to githubData.json...');
     fs.writeFileSync(githubPath, JSON.stringify(repos, null, 2), 'utf-8');
+    console.log('Successfully saved GitHub data');
 
     return Response.json(repos);
   } catch (error) {
     console.error("GitHub fetch failed:", error);
-    return Response.json({ error: "Failed to fetch GitHub data." }, { status: 500 });
+    
+    // Try to return cached data if available
+    try {
+      if (fs.existsSync(githubPath)) {
+        const cachedData = JSON.parse(fs.readFileSync(githubPath, 'utf-8'));
+        return Response.json({ 
+          data: cachedData, 
+          cached: true, 
+          error: "Using cached data - GitHub API unavailable" 
+        });
+      }
+    } catch (cacheError) {
+      console.error("Failed to load cached data:", cacheError);
+    }
+    
+    return Response.json({ 
+      error: "Failed to fetch GitHub data. Please check your internet connection or GitHub API token.",
+      details: error.message 
+    }, { status: 500 });
   }
 }
 
