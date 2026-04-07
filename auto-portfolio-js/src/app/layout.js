@@ -1,5 +1,6 @@
 import { Inter } from "next/font/google";
 import "./globals.css";
+import "react-activity-calendar/tooltips.css";
 import { Toaster } from 'sonner';
 import SmoothScrollWrapper from '@/components/SmoothScrollWrapper';
 import { CustomCursor } from '@/components/ui/custom-cursor';

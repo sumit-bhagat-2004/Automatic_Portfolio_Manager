@@ -1,519 +1,874 @@
 'use client';
-import { useEffect, useState } from 'react';
-import { useRouter } from 'next/navigation';
-import { toast } from 'sonner';
-import { Toggle } from '@/components/ui/toggle';
-import { Search, Save, RefreshCw, LogOut, Star, Eye, EyeOff, Github } from 'lucide-react';
+
+import { useState, useEffect } from 'react';
+import { DragDropContext, Droppable, Draggable } from '@hello-pangea/dnd';
+import dynamic from 'next/dynamic';
+
+// Dynamically import React Quill to avoid SSR issues
+const ReactQuill = dynamic(() => import('react-quill'), { ssr: false });
+import 'react-quill/dist/quill.snow.css';
 
 export default function AdminPage() {
-  const router = useRouter();
-  const [repos, setRepos] = useState([]);
-  const [loading, setLoading] = useState(true);
-  const [saving, setSaving] = useState(false);
-  const [error, setError] = useState('');
-  const [githubLoading, setGithubLoading] = useState(false);
-  const [resettingAll, setResettingAll] = useState(false);
-  const [selectedRepo, setSelectedRepo] = useState(null);
-  const [searchQuery, setSearchQuery] = useState('');
-
+  const [authenticated, setAuthenticated] = useState(false);
+  const [password, setPassword] = useState('');
+  const [activeTab, setActiveTab] = useState('projects');
+  
+  // Projects state
+  const [projects, setProjects] = useState([]);
+  const [selectedProject, setSelectedProject] = useState(null);
+  const [projectForm, setProjectForm] = useState({
+    name: '',
+    url: '',
+    language: '',
+    summary: '',
+    tags: [],
+    visible: true,
+    featured: false
+  });
+  
+  // Config state
+  const [config, setConfig] = useState(null);
+  const [layoutOrder, setLayoutOrder] = useState([]);
+  
+  // Timeline state
+  const [timelineEvents, setTimelineEvents] = useState([]);
+  const [selectedEvent, setSelectedEvent] = useState(null);
+  const [eventForm, setEventForm] = useState({
+    title: '',
+    subtitle: '',
+    dateRange: '',
+    description: '',
+    category: 'experience',
+    orderIndex: 0
+  });
+  
+  // Sync state
+  const [syncing, setSyncing] = useState(false);
+  const [syncMessage, setSyncMessage] = useState('');
+  const [generating, setGenerating] = useState(false);
+  
+  // Check authentication
   useEffect(() => {
-    const isAuth = localStorage.getItem('admin-auth');
-    if (isAuth !== 'yes') {
-      router.push('/admin/login');
-    } else {
-      document.cookie = 'admin-auth=yes; path=/';
-    }
-
-    async function loadData() {
+    const checkAuth = async () => {
       try {
-        const res = await fetch('/api/summary-data');
-        const data = await res.json();
-        const reposList = Object.entries(data).map(([key, val]) => ({ 
-          ...val, 
-          name: key,
-          featured: val.featured || false 
-        }));
-        setRepos(reposList);
-        if (reposList.length > 0) {
-          setSelectedRepo(reposList[0].name);
-        }
+        const res = await fetch('/api/admin/verify', { credentials: 'include' });
+        if (res.ok) setAuthenticated(true);
       } catch (err) {
-        setError('Failed to load summaryData.json');
-      } finally {
-        setLoading(false);
+        console.error('Auth check failed:', err);
       }
+    };
+    checkAuth();
+  }, []);
+  
+  // Load data when authenticated
+  useEffect(() => {
+    if (authenticated) {
+      loadProjects();
+      loadConfig();
+      loadTimeline();
     }
-
-    loadData();
-  }, [resettingAll]);
-
-  const handleChange = (repoName, field, value) => {
-    setRepos((prev) =>
-      prev.map((r) =>
-        r.name === repoName ? { ...r, [field]: value } : r
-      )
-    );
-  };
-
-  const handleSave = async () => {
-    setSaving(true);
+  }, [authenticated]);
+  
+  const handleLogin = async (e) => {
+    e.preventDefault();
     try {
-      const finalObj = {};
-      repos.forEach((r) => {
-        finalObj[r.name] = {
-          id: r.id,
-          name: r.name,
-          url: r.url,
-          language: r.language,
-          stars: r.stars,
-          summary: r.summary || '',
-          tags: r.tags || [],
-          visible: r.visible !== false,
-          featured: r.featured || false,
-        };
-      });
-
-      const res = await fetch('/api/save-summary', {
+      const res = await fetch('/api/admin/login', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(finalObj),
+        body: JSON.stringify({ password }),
+        credentials: 'include'
       });
-
       if (res.ok) {
-        toast.success('Changes saved successfully!', {
-          description: 'Your project summaries have been updated.',
-        });
+        setAuthenticated(true);
+        setPassword('');
       } else {
-        toast.error('Failed to save changes', {
-          description: 'Please try again or check the console for errors.',
-        });
+        alert('Invalid password');
       }
     } catch (err) {
-      console.error(err);
-      toast.error('Save operation failed', {
-        description: 'An unexpected error occurred.',
-      });
-    } finally {
-      setSaving(false);
+      alert('Login failed');
     }
   };
-
-  // Reset summary for a single repo (already present)
-  const handleReset = async (repoName) => {
+  
+  const loadProjects = async () => {
     try {
-      const res = await fetch(`/api/reset-summary?repo=${repoName}`);
+      const res = await fetch('/api/projects');
       const data = await res.json();
-      if (data?.summary) {
-        handleChange(repoName, 'summary', data.summary);
-        toast.success('Summary reset successfully!', {
-          description: `${repoName} summary has been regenerated.`,
-        });
-      }
+      setProjects(data);
     } catch (err) {
-      toast.error('Failed to reset summary', {
-        description: 'Please try again.',
-      });
+      console.error('Failed to load projects:', err);
     }
   };
-
-  // Reset githubData.json for a single repo
-  const handleResetGithubRepo = async (repoName) => {
+  
+  const loadConfig = async () => {
     try {
-      const res = await fetch(`/api/github?refresh=1&repo=${repoName}`, { method: 'POST' });
-      if (!res.ok) throw new Error('Failed to reset GitHub data for repo');
-      toast.success('GitHub data refreshed!', {
-        description: `${repoName} has been updated from GitHub.`,
-      });
-      setResettingAll((prev) => !prev);
+      const res = await fetch('/api/config');
+      const data = await res.json();
+      setConfig(data);
+      setLayoutOrder(data.layoutOrder || ['hero', 'projects', 'timeline', 'bento', 'contact']);
     } catch (err) {
-      toast.error('Failed to reset GitHub data', {
-        description: 'Please check your connection and try again.',
-      });
+      console.error('Failed to load config:', err);
     }
   };
-
-  // Reset githubData.json for all repos
-  const handleResetAllGithubData = async () => {
-    if (!window.confirm("This will reset all GitHub data (githubData.json) to latest from GitHub. Proceed?")) return;
-    setResettingAll(true);
+  
+  const loadTimeline = async () => {
     try {
-      const res = await fetch('/api/github?refresh=1', { method: 'POST' });
-      if (!res.ok) throw new Error('Failed to reset all GitHub data');
-      toast.success('All GitHub data reset!', {
-        description: 'Reloading page...',
-      });
-      setTimeout(() => window.location.reload(), 1000);
+      const res = await fetch('/api/timeline');
+      const data = await res.json();
+      setTimelineEvents(data.sort((a, b) => a.orderIndex - b.orderIndex));
     } catch (err) {
-      setError('Failed to reset all GitHub data');
-      toast.error('Reset failed', {
-        description: 'Could not reset GitHub data.',
-      });
-      setResettingAll(false);
+      console.error('Failed to load timeline:', err);
     }
   };
-
-  const handleLoadNewRepos = async () => {
-    setGithubLoading(true);
-    setError('');
+  
+  const handleProjectSave = async (e) => {
+    e.preventDefault();
     try {
-      console.log('Fetching from GitHub API...');
-      const githubRes = await fetch('/api/github?refresh=1');
-      const githubData = await githubRes.json();
+      const method = selectedProject ? 'PUT' : 'POST';
+      const url = '/api/projects';
       
-      console.log('GitHub response:', githubRes.status, githubData);
+      const payload = {
+        ...projectForm,
+        tags: JSON.stringify(projectForm.tags || [])
+      };
       
-      if (!githubRes.ok) {
-        throw new Error(githubData.error || 'Failed to fetch GitHub data');
+      // Include ID for PUT requests in the body
+      if (selectedProject) {
+        payload.id = selectedProject.id;
       }
       
-      const actualRepos = githubData.data || githubData;
-      
-      if (githubData.cached) {
-        toast.warning('Using cached data', {
-          description: 'GitHub API is unavailable, showing last saved data',
-        });
-      }
-      
-      console.log('Fetching summary data...');
-      const summaryRes = await fetch('/api/summary-data');
-      const summaryData = await summaryRes.json();
-      console.log('Summary data:', summaryData);
-      
-      // Merge GitHub repos with existing summary data
-      const mergedData = {};
-      
-      // Add all GitHub repos
-      actualRepos.forEach(repo => {
-        const existingSummary = summaryData[repo.name];
-        mergedData[repo.name] = {
-          id: repo.id,
-          name: repo.name,
-          url: repo.url,
-          language: repo.language,
-          stars: repo.stars,
-          summary: existingSummary?.summary || 'No summary yet - edit to add one',
-          tags: existingSummary?.tags || [],
-          visible: existingSummary?.visible !== undefined ? existingSummary.visible : true,
-          featured: existingSummary?.featured || false,
-        };
-      });
-      
-      // Save merged data
-      const saveRes = await fetch('/api/save-summary', {
-        method: 'POST',
+      const res = await fetch(url, {
+        method,
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(mergedData),
+        body: JSON.stringify(payload)
       });
       
-      if (!saveRes.ok) {
-        throw new Error('Failed to save merged data');
+      if (res.ok) {
+        await loadProjects();
+        resetProjectForm();
+        alert('Project saved!');
+      } else {
+        const error = await res.json();
+        alert(`Failed to save: ${error.error || 'Unknown error'}`);
+      }
+    } catch (err) {
+      console.error('Failed to save project:', err);
+      alert('Failed to save project: ' + err.message);
+    }
+  };
+  
+  const resetProjectForm = () => {
+    setSelectedProject(null);
+    setProjectForm({
+      name: '',
+      url: '',
+      language: '',
+      summary: '',
+      tags: [],
+      visible: true,
+      featured: false
+    });
+  };
+  
+  const handleProjectDelete = async (id) => {
+    if (!confirm('Delete this project?')) return;
+    try {
+      await fetch(`/api/projects?id=${id}`, { method: 'DELETE' });
+      loadProjects();
+    } catch (err) {
+      console.error('Failed to delete project:', err);
+    }
+  };
+  
+  const editProject = (project) => {
+    setSelectedProject(project);
+    setProjectForm({
+      name: project.name || '',
+      url: project.url || '',
+      language: project.language || '',
+      summary: project.summary || '',
+      tags: Array.isArray(project.tags) ? project.tags : (project.tags ? safeParseJSON(project.tags, []) : []),
+      visible: project.visible,
+      featured: project.featured
+    });
+  };
+  
+  // Safe JSON parser
+  const safeParseJSON = (str, defaultValue = []) => {
+    if (!str || str === 'null' || str === 'undefined') return defaultValue;
+    try {
+      return JSON.parse(str);
+    } catch (e) {
+      console.error('JSON parse error:', e);
+      return defaultValue;
+    }
+  };
+  
+  const handleTimelineSave = async (e) => {
+    e.preventDefault();
+    try {
+      const method = selectedEvent ? 'PUT' : 'POST';
+      const url = '/api/timeline';
+      
+      const payload = { ...eventForm };
+      
+      // Include ID for PUT requests
+      if (selectedEvent) {
+        payload.id = selectedEvent.id;
       }
       
-      // Update UI
-      const reposList = Object.entries(mergedData).map(([key, val]) => ({ 
-        ...val, 
-        name: key,
-        featured: val.featured || false 
-      }));
+      const res = await fetch(url, {
+        method,
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload)
+      });
       
-      setRepos(reposList);
-      if (reposList.length > 0 && !selectedRepo) {
-        setSelectedRepo(reposList[0].name);
+      if (res.ok) {
+        await loadTimeline();
+        resetEventForm();
+        alert('Timeline event saved!');
+      } else {
+        const error = await res.json();
+        alert(`Failed to save: ${error.error || 'Unknown error'}`);
       }
+    } catch (err) {
+      console.error('Failed to save timeline event:', err);
+      alert('Failed to save event: ' + err.message);
+    }
+  };
+  
+  const resetEventForm = () => {
+    setSelectedEvent(null);
+    setEventForm({
+      title: '',
+      subtitle: '',
+      dateRange: '',
+      description: '',
+      category: 'experience',
+      orderIndex: 0
+    });
+  };
+  
+  const handleEventDelete = async (id) => {
+    if (!confirm('Delete this event?')) return;
+    try {
+      await fetch(`/api/timeline?id=${id}`, { method: 'DELETE' });
+      loadTimeline();
+    } catch (err) {
+      console.error('Failed to delete event:', err);
+    }
+  };
+  
+  const editEvent = (event) => {
+    setSelectedEvent(event);
+    setEventForm({
+      title: event.title || '',
+      subtitle: event.subtitle || '',
+      dateRange: event.dateRange || '',
+      description: event.description || '',
+      category: event.category || 'experience',
+      orderIndex: event.orderIndex || 0
+    });
+  };
+  
+  const handleTimelineDragEnd = async (result) => {
+    if (!result.destination) return;
+    
+    const items = Array.from(timelineEvents);
+    const [reordered] = items.splice(result.source.index, 1);
+    items.splice(result.destination.index, 0, reordered);
+    
+    // Update orderIndex for all items
+    const updated = items.map((item, index) => ({
+      ...item,
+      orderIndex: index
+    }));
+    
+    setTimelineEvents(updated);
+    
+    // Save new order to database
+    try {
+      for (const item of updated) {
+        await fetch('/api/timeline', {
+          method: 'PUT',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ id: item.id, orderIndex: item.orderIndex })
+        });
+      }
+    } catch (err) {
+      console.error('Failed to save timeline order:', err);
+    }
+  };
+  
+  const handleGenerateTimeline = async () => {
+    if (!confirm('This will analyze your GitHub commits and generate timeline events. Continue?')) return;
+    
+    setGenerating(true);
+    setSyncMessage('Analyzing GitHub activity...');
+    
+    try {
+      const res = await fetch('/api/timeline/generate', { method: 'POST' });
+      const data = await res.json();
       
-      toast.success('Repos loaded from GitHub!', {
-        description: `${actualRepos.length} repositories synced successfully`,
+      if (res.ok) {
+        setSyncMessage(`✅ Generated ${data.count} timeline events!`);
+        loadTimeline();
+      } else {
+        setSyncMessage('❌ Failed to generate timeline: ' + data.error);
+      }
+    } catch (err) {
+      setSyncMessage('❌ Error: ' + err.message);
+    } finally {
+      setGenerating(false);
+    }
+  };
+  
+  const handleDragEnd = async (result) => {
+    if (!result.destination) return;
+    
+    const items = Array.from(layoutOrder);
+    const [reorderedItem] = items.splice(result.source.index, 1);
+    items.splice(result.destination.index, 0, reorderedItem);
+    
+    setLayoutOrder(items);
+    
+    try {
+      await fetch('/api/config', {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ layoutOrder: items })
       });
     } catch (err) {
-      console.error('Load repos error:', err);
-      const errorMsg = err.message || 'Failed to load new repos from GitHub';
-      setError(errorMsg);
-      toast.error('Failed to load repos', {
-        description: errorMsg,
-        duration: 5000,
-      });
+      console.error('Failed to save layout order:', err);
     }
-    setGithubLoading(false);
   };
-
-  if (loading) return (
-    <div className="min-h-screen bg-gradient-to-br from-gray-900 via-purple-900/20 to-gray-900 flex items-center justify-center">
-      <div className="text-center">
-        <div className="w-16 h-16 border-4 border-purple-500/30 border-t-purple-500 rounded-full animate-spin mx-auto mb-4"></div>
-        <div className="text-white text-xl">Loading admin panel...</div>
-        <div className="text-gray-400 text-sm mt-2">Please wait</div>
-      </div>
-    </div>
-  );
-
-  const filteredRepos = repos.filter(repo => 
-    repo.name.toLowerCase().includes(searchQuery.toLowerCase())
-  );
-
-  const currentRepo = repos.find(r => r.name === selectedRepo);
-
-  return (
-    <div className="flex h-screen bg-gradient-to-br from-gray-900 via-purple-900/20 to-gray-900 text-white overflow-hidden">
-      {/* Sidebar */}
-      <aside className="w-80 bg-black/40 backdrop-blur-xl border-r border-white/10 flex flex-col h-full">
-        {/* Sidebar Header */}
-        <div className="p-6 border-b border-white/10 flex-shrink-0">
-          <h1 className="text-2xl font-bold bg-gradient-to-r from-purple-400 to-pink-400 bg-clip-text text-transparent mb-2">
-            Admin Panel
-          </h1>
-          <p className="text-sm text-gray-400">Manage your portfolio</p>
-        </div>
-
-        {/* Search */}
-        <div className="p-4 border-b border-white/10 flex-shrink-0">
-          <div className="relative">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" size={18} />
+  
+  const handleResumeUpload = async (e) => {
+    const file = e.target.files[0];
+    if (!file) return;
+    
+    const formData = new FormData();
+    formData.append('file', file);
+    
+    try {
+      const res = await fetch('/api/upload', {
+        method: 'POST',
+        body: formData
+      });
+      const data = await res.json();
+      
+      await fetch('/api/config', {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ resumeUrl: data.url })
+      });
+      
+      loadConfig();
+      alert('Resume uploaded!');
+    } catch (err) {
+      console.error('Failed to upload resume:', err);
+      alert('Upload failed');
+    }
+  };
+  
+  const handleGitHubSync = async () => {
+    setSyncing(true);
+    setSyncMessage('Syncing with GitHub...');
+    try {
+      const res = await fetch('/api/github/sync', { method: 'POST' });
+      const data = await res.json();
+      setSyncMessage(`✅ Synced! Added: ${data.added}, Updated: ${data.updated}`);
+      loadProjects();
+    } catch (err) {
+      setSyncMessage('❌ Sync failed: ' + err.message);
+    } finally {
+      setSyncing(false);
+    }
+  };
+  
+  if (!authenticated) {
+    return (
+      <div className="min-h-screen bg-gray-900 flex items-center justify-center">
+        <div className="bg-gray-800 p-8 rounded-lg shadow-lg w-96">
+          <h1 className="text-2xl font-bold text-white mb-6">🔐 Admin Login</h1>
+          <form onSubmit={handleLogin}>
             <input
-              type="text"
-              placeholder="Search projects..."
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-              className="w-full pl-10 pr-4 py-2 bg-gray-800/50 border border-gray-700 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent"
+              type="password"
+              value={password}
+              onChange={(e) => setPassword(e.target.value)}
+              placeholder="Enter admin password"
+              className="w-full px-4 py-2 bg-gray-700 text-white rounded mb-4"
+            />
+            <button
+              type="submit"
+              className="w-full bg-blue-600 hover:bg-blue-700 text-white py-2 rounded"
+            >
+              Login
+            </button>
+          </form>
+        </div>
+      </div>
+    );
+  }
+  
+  return (
+    <div className="min-h-screen bg-gray-900 text-white">
+      {/* Split Screen Layout */}
+      <div className="flex h-screen">
+        {/* Left Panel - Editor */}
+        <div className="w-1/2 overflow-y-auto border-r border-gray-700">
+          <div className="p-6">
+            <h1 className="text-3xl font-bold mb-6 bg-gradient-to-r from-purple-400 via-pink-400 to-blue-400 bg-clip-text text-transparent">
+              🚀 God-Mode Admin Console
+            </h1>
+            
+            {/* Tabs */}
+            <div className="flex gap-2 mb-6 flex-wrap">
+              <button
+                onClick={() => setActiveTab('projects')}
+                className={`px-4 py-2 rounded transition-colors ${activeTab === 'projects' ? 'bg-blue-600' : 'bg-gray-700 hover:bg-gray-600'}`}
+              >
+                📁 Projects
+              </button>
+              <button
+                onClick={() => setActiveTab('timeline')}
+                className={`px-4 py-2 rounded transition-colors ${activeTab === 'timeline' ? 'bg-blue-600' : 'bg-gray-700 hover:bg-gray-600'}`}
+              >
+                📅 Timeline
+              </button>
+              <button
+                onClick={() => setActiveTab('layout')}
+                className={`px-4 py-2 rounded transition-colors ${activeTab === 'layout' ? 'bg-blue-600' : 'bg-gray-700 hover:bg-gray-600'}`}
+              >
+                🎨 Layout
+              </button>
+              <button
+                onClick={() => setActiveTab('settings')}
+                className={`px-4 py-2 rounded transition-colors ${activeTab === 'settings' ? 'bg-blue-600' : 'bg-gray-700 hover:bg-gray-600'}`}
+              >
+                ⚙️ Settings
+              </button>
+            </div>
+            
+            {/* Projects Tab */}
+            {activeTab === 'projects' && (
+              <div>
+                <div className="flex justify-between items-center mb-4">
+                  <h2 className="text-2xl font-bold">Projects Management</h2>
+                  <button
+                    onClick={handleGitHubSync}
+                    disabled={syncing}
+                    className="px-4 py-2 bg-green-600 hover:bg-green-700 rounded disabled:opacity-50 transition-colors"
+                  >
+                    {syncing ? '⏳ Syncing...' : '🔄 Sync GitHub'}
+                  </button>
+                </div>
+                {syncMessage && (
+                  <div className="mb-4 p-3 bg-gray-800 rounded border border-gray-700">{syncMessage}</div>
+                )}
+                
+                {/* Project Form with Rich Text Editor */}
+                <form onSubmit={handleProjectSave} className="mb-6 p-6 bg-gray-800 rounded-lg border border-gray-700">
+                  <h3 className="text-lg font-bold mb-4">
+                    {selectedProject ? '✏️ Edit Project' : '➕ Add New Project'}
+                  </h3>
+                  
+                  <div className="space-y-3">
+                    <input
+                      type="text"
+                      placeholder="Project Name *"
+                      value={projectForm.name}
+                      onChange={(e) => setProjectForm({...projectForm, name: e.target.value})}
+                      className="w-full px-3 py-2 bg-gray-700 rounded border border-gray-600 focus:border-blue-500 outline-none"
+                      required
+                    />
+                    
+                    <input
+                      type="url"
+                      placeholder="Project URL (https://...)"
+                      value={projectForm.url}
+                      onChange={(e) => setProjectForm({...projectForm, url: e.target.value})}
+                      className="w-full px-3 py-2 bg-gray-700 rounded border border-gray-600 focus:border-blue-500 outline-none"
+                    />
+                    
+                    <input
+                      type="text"
+                      placeholder="Primary Language (e.g., JavaScript, Python)"
+                      value={projectForm.language}
+                      onChange={(e) => setProjectForm({...projectForm, language: e.target.value})}
+                      className="w-full px-3 py-2 bg-gray-700 rounded border border-gray-600 focus:border-blue-500 outline-none"
+                    />
+                    
+                    <div>
+                      <label className="block text-sm text-gray-400 mb-2">Project Summary (Rich Text)</label>
+                      <ReactQuill
+                        theme="snow"
+                        value={projectForm.summary}
+                        onChange={(value) => setProjectForm({...projectForm, summary: value})}
+                        className="bg-white text-black rounded"
+                        modules={{
+                          toolbar: [
+                            ['bold', 'italic', 'underline'],
+                            ['link', 'code-block'],
+                            [{ 'list': 'ordered'}, { 'list': 'bullet' }],
+                            ['clean']
+                          ]
+                        }}
+                      />
+                    </div>
+                    
+                    <input
+                      type="text"
+                      placeholder="Tags (comma-separated: react, typescript, api)"
+                      value={projectForm.tags.join(', ')}
+                      onChange={(e) => setProjectForm({...projectForm, tags: e.target.value.split(',').map(t => t.trim()).filter(Boolean)})}
+                      className="w-full px-3 py-2 bg-gray-700 rounded border border-gray-600 focus:border-blue-500 outline-none"
+                    />
+                    
+                    <div className="flex gap-6">
+                      <label className="flex items-center cursor-pointer">
+                        <input
+                          type="checkbox"
+                          checked={projectForm.visible}
+                          onChange={(e) => setProjectForm({...projectForm, visible: e.target.checked})}
+                          className="mr-2 w-4 h-4"
+                        />
+                        <span>👁️ Visible on Portfolio</span>
+                      </label>
+                      <label className="flex items-center cursor-pointer">
+                        <input
+                          type="checkbox"
+                          checked={projectForm.featured}
+                          onChange={(e) => setProjectForm({...projectForm, featured: e.target.checked})}
+                          className="mr-2 w-4 h-4"
+                        />
+                        <span>⭐ Featured Project</span>
+                      </label>
+                    </div>
+                  </div>
+                  
+                  <div className="flex gap-2 mt-4">
+                    <button type="submit" className="px-6 py-2 bg-blue-600 hover:bg-blue-700 rounded transition-colors">
+                      {selectedProject ? '💾 Update' : '➕ Create'} Project
+                    </button>
+                    {selectedProject && (
+                      <button
+                        type="button"
+                        onClick={resetProjectForm}
+                        className="px-6 py-2 bg-gray-700 hover:bg-gray-600 rounded transition-colors"
+                      >
+                        ✖️ Cancel
+                      </button>
+                    )}
+                  </div>
+                </form>
+                
+                {/* Projects List */}
+                <div className="space-y-3">
+                  <h3 className="text-lg font-bold mb-3">All Projects ({projects.length})</h3>
+                  {projects.map((project) => (
+                    <div key={project.id} className="p-4 bg-gray-800 rounded-lg border border-gray-700 hover:border-gray-600 transition-colors">
+                      <div className="flex justify-between items-start">
+                        <div className="flex-1">
+                          <h4 className="font-bold text-lg">{project.name}</h4>
+                          <p className="text-sm text-gray-400 mt-1">
+                            {project.language} • {project.stars} ⭐ • {project.forks} 🍴
+                          </p>
+                          <div className="flex gap-2 mt-2">
+                            {project.featured && <span className="text-xs bg-yellow-600 px-2 py-1 rounded">⭐ Featured</span>}
+                            {project.visible && <span className="text-xs bg-green-600 px-2 py-1 rounded">👁️ Visible</span>}
+                            {!project.visible && <span className="text-xs bg-gray-600 px-2 py-1 rounded">🔒 Hidden</span>}
+                          </div>
+                        </div>
+                        <div className="flex gap-2">
+                          <button
+                            onClick={() => editProject(project)}
+                            className="px-3 py-1 bg-blue-600 hover:bg-blue-700 rounded text-sm transition-colors"
+                          >
+                            ✏️ Edit
+                          </button>
+                          <button
+                            onClick={() => handleProjectDelete(project.id)}
+                            className="px-3 py-1 bg-red-600 hover:bg-red-700 rounded text-sm transition-colors"
+                          >
+                            🗑️ Delete
+                          </button>
+                        </div>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+            
+            {/* Timeline Tab */}
+            {activeTab === 'timeline' && (
+              <div>
+                <div className="flex justify-between items-center mb-4">
+                  <h2 className="text-2xl font-bold">Timeline Management</h2>
+                  <button
+                    onClick={handleGenerateTimeline}
+                    disabled={generating}
+                    className="px-4 py-2 bg-purple-600 hover:bg-purple-700 rounded disabled:opacity-50 transition-colors"
+                  >
+                    {generating ? '⏳ Generating...' : '🤖 AI Generate from GitHub'}
+                  </button>
+                </div>
+                {syncMessage && (
+                  <div className="mb-4 p-3 bg-gray-800 rounded border border-gray-700">{syncMessage}</div>
+                )}
+                
+                {/* Timeline Event Form */}
+                <form onSubmit={handleTimelineSave} className="mb-6 p-6 bg-gray-800 rounded-lg border border-gray-700">
+                  <h3 className="text-lg font-bold mb-4">
+                    {selectedEvent ? '✏️ Edit Event' : '➕ Add Timeline Event'}
+                  </h3>
+                  
+                  <div className="space-y-3">
+                    <input
+                      type="text"
+                      placeholder="Title (e.g., Senior Software Engineer) *"
+                      value={eventForm.title}
+                      onChange={(e) => setEventForm({...eventForm, title: e.target.value})}
+                      className="w-full px-3 py-2 bg-gray-700 rounded border border-gray-600 focus:border-blue-500 outline-none"
+                      required
+                    />
+                    
+                    <input
+                      type="text"
+                      placeholder="Subtitle (e.g., Company Name / University)"
+                      value={eventForm.subtitle}
+                      onChange={(e) => setEventForm({...eventForm, subtitle: e.target.value})}
+                      className="w-full px-3 py-2 bg-gray-700 rounded border border-gray-600 focus:border-blue-500 outline-none"
+                    />
+                    
+                    <input
+                      type="text"
+                      placeholder="Date Range (e.g., 2020 - 2023)"
+                      value={eventForm.dateRange}
+                      onChange={(e) => setEventForm({...eventForm, dateRange: e.target.value})}
+                      className="w-full px-3 py-2 bg-gray-700 rounded border border-gray-600 focus:border-blue-500 outline-none"
+                    />
+                    
+                    <textarea
+                      placeholder="Description / Achievements"
+                      value={eventForm.description}
+                      onChange={(e) => setEventForm({...eventForm, description: e.target.value})}
+                      className="w-full px-3 py-2 bg-gray-700 rounded border border-gray-600 focus:border-blue-500 outline-none h-24"
+                    />
+                    
+                    <select
+                      value={eventForm.category}
+                      onChange={(e) => setEventForm({...eventForm, category: e.target.value})}
+                      className="w-full px-3 py-2 bg-gray-700 rounded border border-gray-600 focus:border-blue-500 outline-none"
+                    >
+                      <option value="experience">💼 Experience</option>
+                      <option value="education">🎓 Education</option>
+                    </select>
+                    
+                    <input
+                      type="number"
+                      placeholder="Order Index (0 = first)"
+                      value={eventForm.orderIndex}
+                      onChange={(e) => setEventForm({...eventForm, orderIndex: parseInt(e.target.value) || 0})}
+                      className="w-full px-3 py-2 bg-gray-700 rounded border border-gray-600 focus:border-blue-500 outline-none"
+                    />
+                  </div>
+                  
+                  <div className="flex gap-2 mt-4">
+                    <button type="submit" className="px-6 py-2 bg-blue-600 hover:bg-blue-700 rounded transition-colors">
+                      {selectedEvent ? '💾 Update' : '➕ Create'} Event
+                    </button>
+                    {selectedEvent && (
+                      <button
+                        type="button"
+                        onClick={resetEventForm}
+                        className="px-6 py-2 bg-gray-700 hover:bg-gray-600 rounded transition-colors"
+                      >
+                        ✖️ Cancel
+                      </button>
+                    )}
+                  </div>
+                </form>
+                
+                {/* Timeline Events List with Drag-and-Drop */}
+                <div>
+                  <h3 className="text-lg font-bold mb-3">Timeline Events (Drag to Reorder)</h3>
+                  <DragDropContext onDragEnd={handleTimelineDragEnd}>
+                    <Droppable droppableId="timeline-events">
+                      {(provided) => (
+                        <div {...provided.droppableProps} ref={provided.innerRef} className="space-y-3">
+                          {timelineEvents.map((event, index) => (
+                            <Draggable key={event.id} draggableId={event.id.toString()} index={index}>
+                              {(provided, snapshot) => (
+                                <div
+                                  ref={provided.innerRef}
+                                  {...provided.draggableProps}
+                                  {...provided.dragHandleProps}
+                                  className={`p-4 bg-gray-800 rounded-lg border border-gray-700 hover:border-gray-600 transition-colors ${
+                                    snapshot.isDragging ? 'opacity-70 shadow-lg' : ''
+                                  }`}
+                                >
+                                  <div className="flex items-start gap-3">
+                                    <span className="text-2xl cursor-grab">☰</span>
+                                    <div className="flex-1">
+                                      <div className="flex items-center gap-2">
+                                        <span className="text-xl">{event.category === 'education' ? '🎓' : '💼'}</span>
+                                        <h4 className="font-bold">{event.title}</h4>
+                                      </div>
+                                      <p className="text-sm text-gray-400 mt-1">{event.subtitle}</p>
+                                      <p className="text-xs text-gray-500 mt-1">{event.dateRange}</p>
+                                    </div>
+                                    <div className="flex gap-2">
+                                      <button
+                                        onClick={() => editEvent(event)}
+                                        className="px-3 py-1 bg-blue-600 hover:bg-blue-700 rounded text-sm transition-colors"
+                                      >
+                                        ✏️
+                                      </button>
+                                      <button
+                                        onClick={() => handleEventDelete(event.id)}
+                                        className="px-3 py-1 bg-red-600 hover:bg-red-700 rounded text-sm transition-colors"
+                                      >
+                                        🗑️
+                                      </button>
+                                    </div>
+                                  </div>
+                                </div>
+                              )}
+                            </Draggable>
+                          ))}
+                          {provided.placeholder}
+                        </div>
+                      )}
+                    </Droppable>
+                  </DragDropContext>
+                </div>
+              </div>
+            )}
+            
+            {/* Layout Tab */}
+            {activeTab === 'layout' && (
+              <div>
+                <h2 className="text-2xl font-bold mb-4">Page Layout Order</h2>
+                <p className="text-gray-400 mb-6">Drag sections to reorder them on your homepage</p>
+                
+                <DragDropContext onDragEnd={handleDragEnd}>
+                  <Droppable droppableId="sections">
+                    {(provided) => (
+                      <div {...provided.droppableProps} ref={provided.innerRef} className="space-y-3">
+                        {layoutOrder.map((section, index) => (
+                          <Draggable key={section} draggableId={section} index={index}>
+                            {(provided, snapshot) => (
+                              <div
+                                ref={provided.innerRef}
+                                {...provided.draggableProps}
+                                {...provided.dragHandleProps}
+                                className={`p-5 bg-gray-800 rounded-lg border border-gray-700 flex items-center gap-4 ${
+                                  snapshot.isDragging ? 'opacity-70 shadow-lg' : 'hover:border-gray-600'
+                                }`}
+                              >
+                                <span className="text-3xl cursor-grab">☰</span>
+                                <div className="flex-1">
+                                  <span className="text-lg capitalize font-medium">{section}</span>
+                                </div>
+                                <span className="text-gray-500 font-mono">#{index + 1}</span>
+                              </div>
+                            )}
+                          </Draggable>
+                        ))}
+                        {provided.placeholder}
+                      </div>
+                    )}
+                  </Droppable>
+                </DragDropContext>
+              </div>
+            )}
+            
+            {/* Settings Tab */}
+            {activeTab === 'settings' && (
+              <div>
+                <h2 className="text-2xl font-bold mb-6">Portfolio Settings</h2>
+                
+                {/* Resume Upload */}
+                <div className="mb-6 p-6 bg-gray-800 rounded-lg border border-gray-700">
+                  <h3 className="text-lg font-bold mb-4">📄 Resume / CV</h3>
+                  {config?.resumeUrl && (
+                    <div className="mb-4 p-3 bg-gray-700 rounded">
+                      <a href={config.resumeUrl} target="_blank" className="text-blue-400 hover:text-blue-300 transition-colors">
+                        📎 Current Resume: {config.resumeUrl}
+                      </a>
+                    </div>
+                  )}
+                  <input
+                    type="file"
+                    accept=".pdf,.doc,.docx"
+                    onChange={handleResumeUpload}
+                    className="w-full px-3 py-2 bg-gray-700 rounded border border-gray-600 file:mr-4 file:py-2 file:px-4 file:rounded file:border-0 file:bg-blue-600 file:text-white hover:file:bg-blue-700"
+                  />
+                  <p className="text-sm text-gray-400 mt-2">Upload PDF, DOC, or DOCX (max 10MB)</p>
+                </div>
+                
+                {/* Theme Settings */}
+                <div className="p-6 bg-gray-800 rounded-lg border border-gray-700">
+                  <h3 className="text-lg font-bold mb-4">🎨 Theme</h3>
+                  <div className="space-y-4">
+                    <div className="flex items-center gap-4">
+                      <label className="text-gray-400">Select Theme:</label>
+                      <select
+                        value={config?.theme || 'dark'}
+                        onChange={async (e) => {
+                          try {
+                            const res = await fetch('/api/config', {
+                              method: 'PUT',
+                              headers: { 'Content-Type': 'application/json' },
+                              body: JSON.stringify({ theme: e.target.value })
+                            });
+                            if (res.ok) {
+                              await loadConfig();
+                              alert('Theme updated!');
+                            }
+                          } catch (err) {
+                            alert('Failed to update theme');
+                          }
+                        }}
+                        className="px-4 py-2 bg-gray-700 border border-gray-600 rounded text-white"
+                      >
+                        <option value="dark">Dark</option>
+                        <option value="light">Light</option>
+                        <option value="system">System</option>
+                      </select>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            )}
+          </div>
+        </div>
+        
+        {/* Right Panel - Live Preview */}
+        <div className="w-1/2 bg-gray-950">
+          <div className="h-full flex flex-col">
+            <div className="p-4 bg-gray-800 border-b border-gray-700 flex items-center justify-between">
+              <span className="text-sm text-gray-400">📺 Live Preview</span>
+              <button
+                onClick={() => {
+                  const iframe = document.getElementById('preview-iframe');
+                  if (iframe) iframe.src = iframe.src;
+                }}
+                className="px-4 py-2 bg-gray-700 hover:bg-gray-600 rounded text-sm transition-colors"
+              >
+                🔄 Refresh Preview
+              </button>
+            </div>
+            <iframe
+              id="preview-iframe"
+              src="http://localhost:3000"
+              className="flex-1 w-full border-0"
+              title="Portfolio Live Preview"
             />
           </div>
         </div>
-
-        {/* Project List - Scrollable */}
-        <div className="flex-1 p-4 space-y-2 overflow-y-auto overflow-x-hidden">
-          {filteredRepos.map((repo) => (
-            <button
-              key={repo.name}
-              onClick={() => setSelectedRepo(repo.name)}
-              className={`w-full text-left p-3 rounded-lg transition-all duration-200 ${
-                selectedRepo === repo.name
-                  ? 'bg-purple-600/20 border border-purple-500/50'
-                  : 'bg-gray-800/30 border border-gray-700/50 hover:bg-gray-800/50'
-              }`}
-            >
-              <div className="flex items-start justify-between gap-2">
-                <div className="flex-1 min-w-0">
-                  <div className="flex items-center gap-2 mb-1">
-                    <h3 className="font-medium text-sm truncate">{repo.name}</h3>
-                    {repo.featured && (
-                      <Star size={14} className="text-yellow-400 flex-shrink-0" fill="currentColor" />
-                    )}
-                  </div>
-                  <div className="flex items-center gap-2 text-xs text-gray-400">
-                    {repo.visible ? (
-                      <Eye size={12} className="text-green-400" />
-                    ) : (
-                      <EyeOff size={12} className="text-gray-500" />
-                    )}
-                    <span>{repo.language || 'No language'}</span>
-                  </div>
-                </div>
-              </div>
-            </button>
-          ))}
-        </div>
-
-        {/* Sidebar Footer - Quick Actions */}
-        <div className="p-4 border-t border-white/10 space-y-2 flex-shrink-0">
-          <button
-            onClick={() => {
-              localStorage.removeItem('admin-auth');
-              document.cookie = 'admin-auth=; Max-Age=0; path=/';
-              window.location.href = '/admin/login';
-            }}
-            className="w-full flex items-center justify-center gap-2 px-4 py-2 bg-red-600/10 hover:bg-red-600/20 border border-red-500/30 text-red-400 rounded-lg transition-all text-sm font-medium"
-          >
-            <LogOut size={16} />
-            Logout
-          </button>
-        </div>
-      </aside>
-
-      {/* Main Content */}
-      <main className="flex-1 h-full" style={{ overflowY: 'auto' }}>
-        <div className="max-w-5xl mx-auto p-8">
-          {/* Top Actions Bar */}
-          <div className="bg-gray-800/30 backdrop-blur-sm border border-gray-700/50 rounded-xl p-4 mb-6">
-            <div className="flex flex-wrap gap-3">
-              <button
-                onClick={handleLoadNewRepos}
-                disabled={githubLoading}
-                className="flex items-center gap-2 px-4 py-2 bg-blue-600 hover:bg-blue-700 rounded-lg transition-all disabled:opacity-50 text-sm font-medium"
-              >
-                <Github size={16} />
-                {githubLoading ? 'Loading...' : 'Load New Repos'}
-              </button>
-              <button
-                onClick={handleResetAllGithubData}
-                disabled={resettingAll}
-                className="flex items-center gap-2 px-4 py-2 bg-yellow-600 hover:bg-yellow-700 text-black rounded-lg transition-all disabled:opacity-50 text-sm font-medium"
-              >
-                <RefreshCw size={16} />
-                {resettingAll ? 'Resetting...' : 'Reset All Data'}
-              </button>
-              <button
-                onClick={async () => {
-                  const confirm = window.confirm("This will regenerate summaries for all repos. Proceed?");
-                  if (!confirm) return;
-                  const res = await fetch('/api/regenerate-all', { method: 'POST' });
-                  const data = await res.json();
-                  if (data.success) {
-                    toast.success('Summaries regenerated!', {
-                      description: 'All project summaries have been updated.',
-                    });
-                  } else {
-                    toast.error('Failed to regenerate summaries');
-                  }
-                }}
-                className="flex items-center gap-2 px-4 py-2 bg-purple-600 hover:bg-purple-700 rounded-lg transition-all text-sm font-medium"
-              >
-                <RefreshCw size={16} />
-                Regenerate All
-              </button>
-              <button
-                onClick={handleSave}
-                disabled={saving}
-                className="flex items-center gap-2 px-4 py-2 bg-green-600 hover:bg-green-700 rounded-lg transition-all disabled:opacity-50 text-sm font-medium ml-auto"
-              >
-                <Save size={16} />
-                {saving ? 'Saving...' : 'Save Changes'}
-              </button>
-            </div>
-          </div>
-
-          {error && (
-            <div className="bg-red-500/10 border border-red-500/50 text-red-400 p-4 rounded-lg mb-6">
-              {error}
-            </div>
-          )}
-
-          {/* Project Editor */}
-          {currentRepo && (
-            <div className="bg-gray-800/30 backdrop-blur-sm border border-gray-700/50 rounded-xl p-6">
-              {/* Project Header */}
-              <div className="flex items-start justify-between mb-6 pb-6 border-b border-gray-700/50">
-                <div>
-                  <h2 className="text-3xl font-bold text-white mb-2">{currentRepo.name}</h2>
-                  <a 
-                    href={currentRepo.url} 
-                    target="_blank" 
-                    rel="noopener noreferrer"
-                    className="text-sm text-purple-400 hover:text-purple-300 transition-colors"
-                  >
-                    View on GitHub →
-                  </a>
-                </div>
-                <div className="flex items-center gap-4">
-                  <div className="text-right">
-                    <div className="text-2xl font-bold text-yellow-400">{currentRepo.stars}</div>
-                    <div className="text-xs text-gray-400">Stars</div>
-                  </div>
-                </div>
-              </div>
-
-              {/* Toggles */}
-              <div className="grid grid-cols-2 gap-6 mb-6">
-                <div className="bg-gray-900/50 border border-gray-700/50 rounded-lg p-4">
-                  <div className="flex items-center justify-between">
-                    <div>
-                      <h3 className="font-semibold text-white mb-1">Visibility</h3>
-                      <p className="text-sm text-gray-400">Show on portfolio</p>
-                    </div>
-                    <Toggle
-                      enabled={currentRepo.visible !== false}
-                      onChange={(val) => handleChange(currentRepo.name, 'visible', val)}
-                      label="Visibility"
-                    />
-                  </div>
-                </div>
-                <div className="bg-gray-900/50 border border-gray-700/50 rounded-lg p-4">
-                  <div className="flex items-center justify-between">
-                    <div>
-                      <h3 className="font-semibold text-white mb-1">Featured</h3>
-                      <p className="text-sm text-gray-400">Pin to top section</p>
-                    </div>
-                    <Toggle
-                      enabled={currentRepo.featured || false}
-                      onChange={(val) => handleChange(currentRepo.name, 'featured', val)}
-                      label="Featured"
-                    />
-                  </div>
-                </div>
-              </div>
-
-              {/* Summary Editor */}
-              <div className="mb-6">
-                <label className="block text-sm font-semibold text-white mb-3">
-                  Project Summary
-                  <span className="text-gray-400 font-normal ml-2">(Describe your project)</span>
-                </label>
-                <textarea
-                  value={currentRepo.summary || ''}
-                  onChange={(e) => handleChange(currentRepo.name, 'summary', e.target.value)}
-                  className="w-full p-4 rounded-lg bg-gray-900/50 text-white border border-gray-700 focus:border-purple-500 focus:ring-2 focus:ring-purple-500/50 transition-all min-h-[200px] text-base"
-                  placeholder="Write a compelling summary of your project..."
-                />
-              </div>
-
-              {/* Tags Editor */}
-              <div className="mb-6">
-                <label className="block text-sm font-semibold text-white mb-3">
-                  Tags
-                  <span className="text-gray-400 font-normal ml-2">(Comma separated)</span>
-                </label>
-                <input
-                  type="text"
-                  value={currentRepo.tags?.join(', ') || ''}
-                  onChange={(e) =>
-                    handleChange(
-                      currentRepo.name,
-                      'tags',
-                      e.target.value.split(',').map((t) => t.trim()).filter(t => t)
-                    )
-                  }
-                  className="w-full p-4 rounded-lg bg-gray-900/50 text-white border border-gray-700 focus:border-purple-500 focus:ring-2 focus:ring-purple-500/50 transition-all text-base"
-                  placeholder="React, TypeScript, Node.js, etc."
-                />
-                {currentRepo.tags && currentRepo.tags.length > 0 && (
-                  <div className="flex flex-wrap gap-2 mt-3">
-                    {currentRepo.tags.map((tag, idx) => (
-                      <span 
-                        key={idx}
-                        className="px-3 py-1 bg-purple-500/10 border border-purple-500/30 text-purple-300 rounded-full text-sm"
-                      >
-                        {tag}
-                      </span>
-                    ))}
-                  </div>
-                )}
-              </div>
-
-              {/* Action Buttons */}
-              <div className="flex gap-3 pt-6 border-t border-gray-700/50">
-                <button
-                  onClick={() => handleReset(currentRepo.name)}
-                  className="flex items-center gap-2 px-4 py-2 bg-yellow-500/10 hover:bg-yellow-500/20 border border-yellow-500/30 text-yellow-400 rounded-lg transition-all text-sm font-medium"
-                >
-                  <RefreshCw size={16} />
-                  Reset Summary
-                </button>
-                <button
-                  onClick={() => handleResetGithubRepo(currentRepo.name)}
-                  className="flex items-center gap-2 px-4 py-2 bg-blue-500/10 hover:bg-blue-500/20 border border-blue-500/30 text-blue-400 rounded-lg transition-all text-sm font-medium"
-                >
-                  <Github size={16} />
-                  Reset GitHub Data
-                </button>
-              </div>
-            </div>
-          )}
-
-          {!currentRepo && filteredRepos.length === 0 && (
-            <div className="text-center py-12 text-gray-400">
-              <p>No projects found matching "{searchQuery}"</p>
-            </div>
-          )}
-        </div>
-      </main>
+      </div>
     </div>
   );
 }

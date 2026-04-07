@@ -1,0 +1,19 @@
+# Docker ignore file for Next.js application
+node_modules
+npm-debug.log
+.next
+.DS_Store
+*.log
+.env*.local
+!.env.example
+.git
+.gitignore
+README.md
+.vscode
+.idea
+coverage
+.cache
+dist
+build
+*.md
+!README.md

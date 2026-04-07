@@ -1,7 +1,7 @@
 'use client';
 import { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Home, Briefcase, Mail, Menu, X } from 'lucide-react';
+import { Home, Briefcase, Mail, Menu, X, Github, Linkedin, Twitter } from 'lucide-react';
 
 export const FloatingNavbar = () => {
   const [visible, setVisible] = useState(true);
@@ -25,9 +25,15 @@ export const FloatingNavbar = () => {
   }, [lastScrollY]);
 
   const navItems = [
-    { name: 'Home', icon: Home, href: '#home' },
+    { name: 'Home', icon: Home, href: '#hero' },
     { name: 'Projects', icon: Briefcase, href: '#projects' },
     { name: 'Contact', icon: Mail, href: '#contact' },
+  ];
+  
+  const socialLinks = [
+    { name: 'GitHub', icon: Github, href: 'https://github.com/sumit-bhagat-2004' },
+    { name: 'LinkedIn', icon: Linkedin, href: 'https://linkedin.com/in/sumit-bhagat' },
+    { name: 'Twitter', icon: Twitter, href: 'https://twitter.com/sumitbhagat' },
   ];
 
   const handleNavClick = (e, href) => {
@@ -49,18 +55,36 @@ export const FloatingNavbar = () => {
       >
         <div className="bg-black/40 backdrop-blur-xl border border-white/10 rounded-full px-6 py-3 shadow-2xl shadow-purple-500/20">
           {/* Desktop Menu */}
-          <div className="hidden sm:flex items-center justify-center gap-8">
-            {navItems.map((item) => (
-              <a
-                key={item.name}
-                href={item.href}
-                onClick={(e) => handleNavClick(e, item.href)}
-                className="text-gray-300 hover:text-white transition-all duration-300 flex items-center gap-2 group"
-              >
-                <item.icon size={18} className="group-hover:scale-110 transition-transform" />
-                <span className="text-sm font-medium">{item.name}</span>
-              </a>
-            ))}
+          <div className="hidden sm:flex items-center justify-between gap-6">
+            <div className="flex items-center gap-6">
+              {navItems.map((item) => (
+                <a
+                  key={item.name}
+                  href={item.href}
+                  onClick={(e) => handleNavClick(e, item.href)}
+                  className="text-gray-300 hover:text-white transition-all duration-300 flex items-center gap-2 group"
+                >
+                  <item.icon size={18} className="group-hover:scale-110 transition-transform" />
+                  <span className="text-sm font-medium">{item.name}</span>
+                </a>
+              ))}
+            </div>
+            
+            {/* Social Links */}
+            <div className="flex items-center gap-3 border-l border-white/10 pl-4">
+              {socialLinks.map((social) => (
+                <a
+                  key={social.name}
+                  href={social.href}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="text-gray-400 hover:text-white transition-all duration-300 p-2 hover:bg-white/5 rounded-full"
+                  aria-label={social.name}
+                >
+                  <social.icon size={16} />
+                </a>
+              ))}
+            </div>
           </div>
 
           {/* Mobile Menu Button */}

@@ -1,0 +1,52 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+model Config {
+  id          Int      @id @default(autoincrement())
+  theme       String   @default("dark")
+  layoutOrder String   @default("[]") // JSON array of section names
+  resumeUrl   String?
+  bentoData   String?  // JSON for bento grid configuration
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+}
+
+model Project {
+  id          Int      @id @default(autoincrement())
+  githubId    Int?     @unique // GitHub repository ID
+  name        String
+  url         String?
+  language    String?
+  stars       Int      @default(0)
+  forks       Int      @default(0)
+  watchers    Int      @default(0)
+  summary     String?  // Rich text/markdown summary
+  tags        String   @default("[]") // JSON array of tags
+  visible     Boolean  @default(true)
+  featured    Boolean  @default(false)
+  updatedAt   DateTime @updatedAt
+  createdAt   DateTime @default(now())
+}
+
+model TimelineEvent {
+  id          Int      @id @default(autoincrement())
+  title       String
+  subtitle    String?
+  dateRange   String
+  description String?
+  category    String   // "education" or "experience"
+  orderIndex  Int      @default(0)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@index([category, orderIndex])
+}
