@@ -1,4 +1,4 @@
-'use client';
+'use-client';
 import { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Home, Briefcase, Mail, Menu, X, Github, Linkedin, Twitter } from 'lucide-react';
@@ -51,12 +51,11 @@ export const FloatingNavbar = () => {
         initial={{ y: -100 }}
         animate={{ y: visible ? 0 : -100 }}
         transition={{ duration: 0.3 }}
-        className="fixed top-4 left-1/2 -translate-x-1/2 z-50 px-4 w-full max-w-md"
+        className="fixed top-4 left-1/2 -translate-x-1/2 z-50 px-4 w-full max-w-xl" // Changed max-w-md to max-w-xl
       >
         <div className="bg-black/40 backdrop-blur-xl border border-white/10 rounded-full px-6 py-3 shadow-2xl shadow-purple-500/20">
           {/* Desktop Menu */}
-          <div className="hidden sm:flex items-center justify-between gap-6">
-            <div className="flex items-center gap-6">
+          <div className="hidden sm:flex items-center justify-center gap-6">
               {navItems.map((item) => (
                 <a
                   key={item.name}
@@ -68,10 +67,7 @@ export const FloatingNavbar = () => {
                   <span className="text-sm font-medium">{item.name}</span>
                 </a>
               ))}
-            </div>
-            
-            {/* Social Links */}
-            <div className="flex items-center gap-3 border-l border-white/10 pl-4">
+
               {socialLinks.map((social) => (
                 <a
                   key={social.name}
@@ -85,8 +81,6 @@ export const FloatingNavbar = () => {
                 </a>
               ))}
             </div>
-          </div>
-
           {/* Mobile Menu Button */}
           <div className="sm:hidden flex items-center justify-between">
             <span className="text-white font-semibold">Menu</span>
@@ -128,3 +122,4 @@ export const FloatingNavbar = () => {
     </>
   );
 };
+

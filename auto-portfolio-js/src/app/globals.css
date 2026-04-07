@@ -74,15 +74,15 @@ html,
 body {
   max-width: 100vw;
   overflow-x: hidden;
-  scroll-behavior: auto;
+  /* Removed scroll-behavior: auto; as Lenis handles this */
 }
 
 html {
-  height: 100%;
+  /* Removed height: 100%; to allow natural content expansion */
 }
 
 body {
-  min-height: 100%;
+  /* Removed min-height: 100%; to allow natural content expansion */
 }
 
 @layer utilities {
@@ -201,3 +201,4 @@ body {
     animation: pulse-glow 2s ease-in-out infinite;
   }
 }
+

@@ -84,9 +84,10 @@ function TimelineEvent({ event, index }) {
         )}
         
         {event.description && (
-          <p className="text-gray-400 text-sm leading-relaxed">{event.description}</p>
+          <p className="text-gray-400 text-sm leading-relaxed whitespace-pre-wrap">{event.description}</p>
         )}
       </div>
     </motion.div>
   );
 }
+

@@ -1,4 +1,4 @@
-'use client';
+'use a client';
 
 import { useEffect, useState } from 'react';
 import { motion } from 'framer-motion';
@@ -106,7 +106,7 @@ export default function ProjectsSection() {
         </motion.div>
 
         {/* Projects Grid */}
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6"> {/* Reverted to original without scroll classes */}
           {filteredProjects.map((project, idx) => (
             <ProjectCard key={project.id} project={project} index={idx} />
           ))}
@@ -131,34 +131,34 @@ function ProjectCard3D({ project, index }) {
         <CardBody className="relative group/card w-full h-auto rounded-2xl p-6 border border-white/[0.1] bg-gradient-to-br from-gray-900/90 via-purple-900/30 to-gray-900/90 backdrop-blur-xl">
           {/* Animated gradient border effect */}
           <div className="absolute inset-0 rounded-2xl bg-gradient-to-r from-purple-500 via-pink-500 to-blue-500 opacity-0 group-hover/card:opacity-20 blur-xl transition-opacity duration-500" />
-          
+
           {/* Glow effect on hover */}
           <div className="absolute -inset-0.5 rounded-2xl bg-gradient-to-r from-purple-600 via-pink-600 to-blue-600 opacity-0 group-hover/card:opacity-30 blur transition-opacity duration-500" />
-          
+
           <div className="relative z-10">
             <CardItem translateZ="60" className="w-full mb-4">
               <div className="flex justify-between items-start">
                 <div className="flex-1">
                   <h3 className="text-2xl font-bold bg-gradient-to-r from-white via-purple-200 to-pink-200 bg-clip-text text-transparent group-hover/card:from-purple-400 group-hover/card:via-pink-400 group-hover/card:to-blue-400 transition-all duration-300">
-                    {project.name}
-                  </h3>
+          {project.name}
+        </h3>
                   <div className="flex items-center gap-2 mt-2">
                     <span className="inline-flex items-center gap-1.5 px-3 py-1 bg-yellow-500/10 border border-yellow-500/20 rounded-full">
                       <Star size={12} className="text-yellow-400" fill="currentColor" />
                       <span className="text-xs text-yellow-300 font-medium">{project.stars || 0}</span>
-                    </span>
+          </span>
                     {project.language && (
                       <span className="px-3 py-1 bg-purple-500/10 border border-purple-500/20 text-purple-300 rounded-full text-xs font-medium">
                         {project.language}
-                      </span>
-                    )}
-                  </div>
-                </div>
+            </span>
+          )}
+        </div>
+      </div>
                 <CardItem translateZ="80">
-                  <a 
-                    href={project.url} 
-                    target="_blank" 
-                    rel="noopener noreferrer" 
+                  <a
+                    href={project.url}
+                    target="_blank"
+                    rel="noopener noreferrer"
                     className="p-2.5 bg-white/5 hover:bg-white/10 border border-white/10 rounded-lg transition-all duration-300 hover:scale-110 hover:shadow-lg hover:shadow-purple-500/50 flex items-center justify-center"
                   >
                     <ExternalLink size={18} className="text-gray-300 group-hover:text-white" />
@@ -166,23 +166,23 @@ function ProjectCard3D({ project, index }) {
                 </CardItem>
               </div>
             </CardItem>
-            
+
             <CardItem as="div" translateZ="50" className="text-sm text-gray-300 mb-4 line-clamp-3 leading-relaxed">
               <div dangerouslySetInnerHTML={{ __html: project.summary || 'No description available.' }} />
             </CardItem>
-            
+
             {/* SkillChart */}
             <CardItem translateZ="70" className="w-full mb-4">
               <div className="bg-black/20 backdrop-blur-sm border border-white/5 rounded-xl p-4">
                 <SkillChart repo={project} />
               </div>
             </CardItem>
-            
+
             {/* Tags */}
             {tags && tags.length > 0 && (
               <CardItem translateZ="40" className="flex flex-wrap gap-2">
                 {tags.slice(0, 4).map((tag, idx) => (
-                  <span 
+                  <span
                     key={idx}
                     className="px-2 py-1 bg-blue-500/10 border border-blue-500/20 text-blue-300 rounded text-xs"
                   >
@@ -208,30 +208,34 @@ function ProjectCard({ project, index }) {
       whileInView={{ opacity: 1, y: 0 }}
       viewport={{ once: true }}
       transition={{ duration: 0.4, delay: index * 0.05 }}
-      className="group bg-gray-900 border border-gray-700 rounded-2xl p-6 hover:border-purple-500 hover:shadow-xl hover:shadow-purple-500/20 transition-all"
+      className="group relative overflow-hidden bg-gradient-to-br from-gray-950 to-gray-850 border border-gray-800 rounded-2xl p-6 hover:border-purple-600 hover:shadow-lg hover:shadow-purple-500/30 transition-all duration-300 ease-in-out"
     >
+      {/* Subtle glow effect on hover */}
+      <div className="absolute inset-0 rounded-2xl bg-gradient-to-r from-purple-500/20 via-pink-500/20 to-blue-500/20 opacity-0 group-hover:opacity-50 blur-xl transition-opacity duration-500" />
+
+      <div className="relative z-10"> {/* Ensure content is above the glow */}
       <div className="flex justify-between items-start mb-3">
-        <h3 className="text-xl font-bold group-hover:text-purple-400 transition-colors">
+          <h3 className="text-xl font-bold text-gray-50 group-hover:text-purple-300 transition-colors duration-300">
           {project.name}
         </h3>
         <a
           href={project.url}
           target="_blank"
           rel="noopener noreferrer"
-          className="p-2 hover:bg-gray-800 rounded-lg transition-colors"
+            className="p-2 bg-gray-800/50 hover:bg-purple-800/20 rounded-lg transition-colors duration-300"
         >
-          <ExternalLink size={16} className="text-gray-400" />
+            <ExternalLink size={16} className="text-gray-400 group-hover:text-purple-300 transition-colors duration-300" />
         </a>
       </div>
 
-      <div 
-        className="text-gray-400 text-sm mb-4 line-clamp-2"
+      <div
+          className="text-gray-300 text-sm mb-4 line-clamp-3 leading-relaxed" // Increased line-clamp for more summary visibility
         dangerouslySetInnerHTML={{ __html: project.summary || 'No description available.' }}
       />
 
       <div className="flex flex-wrap gap-2 mb-4">
         {project.language && (
-          <span className="px-2 py-1 bg-gray-800 rounded text-xs text-gray-300">
+            <span className="px-2 py-1 bg-purple-500/10 text-purple-300 rounded text-xs">
             <Code size={12} className="inline mr-1" />
             {project.language}
           </span>
@@ -242,11 +246,7 @@ function ProjectCard({ project, index }) {
             <span className="text-xs">{project.stars}</span>
           </div>
         )}
-        {project.forks > 0 && (
-          <span className="px-2 py-1 bg-gray-800 rounded text-xs text-gray-400">
-            {project.forks} forks
-          </span>
-        )}
+          {/* Removed forks for cleaner look, can be added back if desired */}
       </div>
 
       {/* Tags */}
@@ -261,12 +261,14 @@ function ProjectCard({ project, index }) {
             </span>
           ))}
           {tags.length > 3 && (
-            <span className="px-2 py-0.5 text-gray-500 text-xs">
+              <span className="px-2 py-0.5 text-gray-400 text-xs">
               +{tags.length - 3} more
             </span>
           )}
         </div>
       )}
+      </div>
     </motion.div>
   );
 }
+

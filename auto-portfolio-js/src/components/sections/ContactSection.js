@@ -5,6 +5,8 @@ import { Mail } from 'lucide-react';
 import { Button } from '@/components/ui/Button';
 
 export default function ContactSection() {
+  const emailAddress = 'sumitbhagat011@gmail.com'; // Added email address
+
   return (
     <section id="contact" className="relative min-h-screen w-full flex flex-col justify-center items-center text-center px-4 sm:px-6 md:px-8">
       <motion.div
@@ -26,7 +28,7 @@ export default function ContactSection() {
           viewport={{ once: true }}
           transition={{ delay: 0.3 }}
         >
-          <a href="mailto:your.email@example.com">
+          <a href={`mailto:${emailAddress}`}> {/* Updated href to use emailAddress variable */}
             <Button 
               size="lg" 
               className="relative overflow-hidden group bg-gradient-to-r from-purple-600 via-pink-600 to-blue-600 hover:from-purple-700 hover:via-pink-700 hover:to-blue-700 border-0 shadow-2xl shadow-purple-500/50 text-lg px-10 py-7"
@@ -41,3 +43,4 @@ export default function ContactSection() {
     </section>
   );
 }
+

@@ -15,6 +15,7 @@ model Config {
   theme       String   @default("dark")
   layoutOrder String   @default("[]") // JSON array of section names
   resumeUrl   String?
+  userImage   String?  // URL for the user's profile image
   bentoData   String?  // JSON for bento grid configuration
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
@@ -50,3 +51,5 @@ model TimelineEvent {
 
   @@index([category, orderIndex])
 }
+
+

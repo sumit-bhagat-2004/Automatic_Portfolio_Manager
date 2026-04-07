@@ -7,38 +7,27 @@ import { Button } from '@/components/ui/Button';
 
 export default function HeroSection() {
   const githubUsername = process.env.NEXT_PUBLIC_GITHUB_USERNAME || 'sumit-bhagat-2004';
+  const emailAddress = 'sumitbhagat011@gmail.com';
   
   return (
     <section id="hero" className="relative min-h-screen w-full flex flex-col justify-center items-center text-center px-4">
-      {/* GitHub Corner Ribbon */}
-      <a
-        href={`https://github.com/${githubUsername}`}
-        target="_blank"
-        rel="noopener noreferrer"
-        className="absolute top-0 right-0 z-50 group"
-        aria-label="View source on GitHub"
-      >
-        <svg
-          width="80"
-          height="80"
-          viewBox="0 0 250 250"
-          className="fill-purple-600 text-white absolute top-0 right-0"
-        >
-          <path d="M0,0 L115,115 L130,115 L142,142 L250,250 L250,0 Z"></path>
-          <path
-            d="M128.3,109.0 C113.8,99.7 119.0,89.6 119.0,89.6 C122.0,82.7 120.5,78.6 120.5,78.6 C119.2,72.0 123.4,76.3 123.4,76.3 C127.3,80.9 125.5,87.3 125.5,87.3 C122.9,97.6 130.6,101.9 134.4,103.2"
-            fill="currentColor"
-            className="group-hover:fill-white transition-colors"
-          ></path>
-          <path
-            d="M115.0,115.0 C114.9,115.1 118.7,116.5 119.8,115.4 L133.7,101.6 C136.9,99.2 139.9,98.4 142.2,98.6 C133.8,88.0 127.5,74.4 143.8,58.0 C148.5,53.4 154.0,51.2 159.7,51.0 C160.3,49.4 163.2,43.6 171.4,40.1 C171.4,40.1 176.1,42.5 178.8,56.2 C183.1,58.6 187.2,61.8 190.9,65.4 C194.5,69.0 197.7,73.2 200.1,77.6 C213.8,80.2 216.3,84.9 216.3,84.9 C212.7,93.1 206.9,96.0 205.4,96.6 C205.1,102.4 203.0,107.8 198.3,112.5 C181.9,128.9 168.3,122.5 157.7,114.1 C157.9,116.9 156.7,120.9 152.7,124.9 L141.0,136.5 C139.8,137.7 141.6,141.9 141.8,141.8 Z"
-            fill="currentColor"
-            className="group-hover:fill-white transition-colors"
-          ></path>
-        </svg>
-      </a>
-
+      {/* Removed GitHub Corner Ribbon */}
       <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="relative z-10 max-w-5xl mx-auto">
+        {/* Animated Profile Image */}
+        <motion.div
+          initial={{ scale: 0, rotate: -180 }}
+          animate={{ scale: 1, rotate: 0 }}
+          transition={{ duration: 1 }}
+          className="relative mb-8 inline-block"
+        >
+          <div className="absolute inset-0 bg-gradient-to-r from-purple-500 via-pink-500 to-blue-500 rounded-full blur-2xl opacity-50 animate-pulse-glow" />
+          <img
+            src="https://raw.githubusercontent.com/sumit-bhagat-2004/Automatic_Portfolio_Manager/main/auto-portfolio-js/public/photo_2025-06-13_23-09-39(1).jpg"
+            alt="Sumit Bhagat"
+            className="relative w-28 h-28 sm:w-36 sm:h-36 md:w-44 md:h-44 rounded-full border-4 border-purple-500/50 shadow-2xl shadow-purple-500/50 ring-4 ring-purple-500/20 ring-offset-4 ring-offset-black"
+          />
+        </motion.div>
+
         <motion.h1 
           initial={{ y: -20 }}
           animate={{ y: 0 }}
@@ -74,18 +63,22 @@ export default function HeroSection() {
           transition={{ delay: 0.5 }}
           className="flex gap-4 justify-center flex-wrap"
         >
-          <Button size="lg" className="bg-gradient-to-r from-purple-600 to-blue-600 hover:from-purple-700 hover:to-blue-700">
+          <Button
+            size="lg" 
+            className="bg-gradient-to-r from-purple-600 to-blue-600 hover:from-purple-700 hover:to-blue-700"
+            onClick={() => window.location.href = `mailto:${emailAddress}`}
+          >
             <Mail className="mr-2" /> Get In Touch
           </Button>
-          <Button 
-            size="lg" 
+          <Button
+            size="lg"
             variant="outline"
             onClick={() => window.open(`https://github.com/${githubUsername}`, '_blank')}
           >
             <Github className="mr-2" /> View GitHub
           </Button>
         </motion.div>
-        
+
         <motion.div
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
@@ -98,3 +91,4 @@ export default function HeroSection() {
     </section>
   );
 }
+
