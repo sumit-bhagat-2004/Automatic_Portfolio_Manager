@@ -1,4 +1,4 @@
-'use-client';
+'use client';
 import { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Home, Briefcase, Mail, Menu, X, Github, Linkedin, Twitter } from 'lucide-react';

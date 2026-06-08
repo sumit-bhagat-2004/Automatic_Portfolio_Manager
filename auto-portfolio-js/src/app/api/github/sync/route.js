@@ -13,15 +13,15 @@ export async function POST(request) {
       );
     }
 
+    const ghHeaders = {
+      Authorization: `Bearer ${GITHUB_TOKEN}`,
+      'Accept': 'application/vnd.github.v3+json',
+    };
+
     // Fetch repositories from GitHub API
     const response = await fetch(
       `https://api.github.com/users/${GITHUB_USERNAME}/repos?per_page=100&sort=updated`,
-      {
-        headers: {
-          Authorization: `Bearer ${GITHUB_TOKEN}`,
-          'Accept': 'application/vnd.github.v3+json',
-        },
-      }
+      { headers: ghHeaders }
     );
 
     if (!response.ok) {
@@ -32,27 +32,47 @@ export async function POST(request) {
 
     let created = 0;
     let updated = 0;
-    let skipped = 0;
 
     for (const repo of repos) {
+      // Fetch all languages for this repo (returns { JavaScript: 1234, CSS: 456, ... })
+      let allLanguages = [];
+      try {
+        const langRes = await fetch(
+          `https://api.github.com/repos/${GITHUB_USERNAME}/${repo.name}/languages`,
+          { headers: ghHeaders }
+        );
+        if (langRes.ok) {
+          const langData = await langRes.json();
+          allLanguages = Object.keys(langData); // e.g. ['JavaScript', 'CSS', 'HTML']
+        }
+      } catch (e) {
+        // If languages fetch fails, skip it silently
+      }
+
+      // Also get topics
+      const topicsRes = repo.topics || [];
+
+      // Merge all languages + topics into tags, deduplicated
+      const mergedTags = [...new Set([...topicsRes, ...allLanguages])];
+
       // Check if project already exists
       const existing = await prisma.project.findFirst({
         where: { githubId: repo.id },
       });
 
       if (existing) {
-        // Update GitHub-specific fields only (non-destructive)
-        // Preserve custom summary, tags, visible, and featured status
+        // Update GitHub-specific fields (non-destructive for summary, visible, featured)
+        // DO update tags with latest languages + topics
         await prisma.project.update({
           where: { id: existing.id },
           data: {
             name: repo.name,
             url: repo.html_url,
-            language: repo.language || 'Unknown',
+            language: repo.language || null,
             stars: repo.stargazers_count || 0,
             forks: repo.forks_count || 0,
             watchers: repo.watchers_count || 0,
-            // Don't update: summary, tags, visible, featured
+            tags: JSON.stringify(mergedTags),
           },
         });
         updated++;
@@ -63,12 +83,12 @@ export async function POST(request) {
             githubId: repo.id,
             name: repo.name,
             url: repo.html_url,
-            language: repo.language || 'Unknown',
+            language: repo.language || null,
             stars: repo.stargazers_count || 0,
             forks: repo.forks_count || 0,
             watchers: repo.watchers_count || 0,
             summary: repo.description || '',
-            tags: JSON.stringify([]),
+            tags: JSON.stringify(mergedTags),
             visible: true,
             featured: false,
           },
@@ -84,7 +104,6 @@ export async function POST(request) {
         total: repos.length,
         created,
         updated,
-        skipped,
       },
     });
   } catch (error) {
