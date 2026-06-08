@@ -1571,15 +1571,15 @@ export default function AdminPage() {
                     ) : (
                       <div className="space-y-4">
                         <div>
-                          <label className="block text-xs font-semibold text-gray-400 uppercase tracking-wider mb-2 pl-1">Proxy Gateway Base URL</label>
+                          <label className="block text-xs font-semibold text-gray-400 uppercase tracking-wider mb-2 pl-1">Proxy Base URL</label>
                           <input
                             type="text"
-                            placeholder="https://gemini.yourdomain.xyz"
+                            placeholder="https://gemini.bhagatsumit.xyz"
                             value={geminiProxyUrl}
                             onChange={(e) => setGeminiProxyUrl(e.target.value)}
                             className="w-full bg-white/5 border border-white/10 focus:border-purple-500 text-white px-4 py-3.5 rounded-2xl outline-none transition-colors text-sm font-mono placeholder-gray-600"
                           />
-                          <p className="text-[10px] text-gray-500 mt-1.5">Base URL of your proxy. Model path will be appended automatically: <code className="text-purple-400">/v1/models/{'{modelId}'}:generateContent</code></p>
+                          <p className="text-[10px] text-gray-500 mt-1.5">Enter just the base URL. The app will auto-append <code className="text-cyan-400">/v1/chat/completions</code> (OpenAI format). For Gemini-native, enter the full URL with <code className="text-cyan-400">/v1/models/MODEL_ID:generateContent</code></p>
                         </div>
                         <div>
                           <label className="block text-xs font-semibold text-gray-400 uppercase tracking-wider mb-2 pl-1">Proxy Authorization Token / Key</label>

@@ -196,52 +196,47 @@ function StatItem({ label, value }) {
 
 function SkillsWidget({ config }) {
   const skills = (config?.skillsData && Array.isArray(config.skillsData) && config.skillsData.length > 0)
-    ? config.skillsData 
+    ? config.skillsData
     : [
         { name: 'JavaScript', category: 'Languages', level: 90 },
         { name: 'TypeScript', category: 'Languages', level: 85 },
-        { name: 'Python', category: 'Languages', level: 75 },
         { name: 'React', category: 'Frontend', level: 90 },
-        { name: 'Next.js', category: 'Frontend', level: 85 },
-        { name: 'Tailwind CSS', category: 'Frontend', level: 95 },
-        { name: 'Node.js', category: 'Backend', level: 80 },
-        { name: 'Prisma', category: 'Backend', level: 80 },
+        { name: 'Next.js', category: 'Frontend', level: 88 },
+        { name: 'Node.js', category: 'Backend', level: 82 },
+        { name: 'Python', category: 'Languages', level: 75 },
+        { name: 'Docker', category: 'DevOps', level: 75 },
+        { name: 'Git', category: 'Tools', level: 92 },
       ];
 
-  // Group skills by category
-  const categories = skills.reduce((acc, skill) => {
-    const cat = skill.category || 'Other';
-    if (!acc[cat]) acc[cat] = [];
-    acc[cat].push(skill);
-    return acc;
-  }, {});
+  const CATEGORY_COLORS = {
+    Languages: '#F59E0B', Frontend: '#06B6D4', Backend: '#A855F7',
+    DevOps: '#3B82F6', Tools: '#10B981', Database: '#F97316', Other: '#8B5CF6',
+  };
+
+  const shown = skills.slice(0, 10);
 
   return (
-    <div className="h-full flex flex-col justify-start text-left">
-      <h3 className="text-lg font-bold text-white mb-3 flex items-center gap-1.5">
-        <Sparkles size={16} className="text-purple-400" />
-        <span>Skills Overview</span>
+    <div className="h-full flex flex-col">
+      <h3 className="text-base font-bold text-white mb-3 flex items-center gap-1.5">
+        <Sparkles size={14} className="text-purple-400" />
+        <span>Top Skills</span>
       </h3>
-      <div className="flex-1 overflow-y-auto space-y-3 pr-1 scrollbar-thin scrollbar-thumb-purple-900/40">
-        {Object.entries(categories).map(([catName, catSkills]) => (
-          <div key={catName} className="space-y-1">
-            <span className="text-[9px] uppercase font-black tracking-wider text-gray-500 pl-0.5">{catName}</span>
-            <div className="flex flex-wrap gap-1.5">
-              {catSkills.map((skill) => (
-                <span
-                  key={skill.name}
-                  className="inline-flex items-center gap-1.5 px-2.5 py-1 bg-white/5 border border-white/5 hover:border-purple-500/30 text-gray-300 hover:text-white rounded-lg text-[11px] font-semibold transition-all duration-300 hover:scale-105"
-                >
-                  <span className="shrink-0">{getSkillIcon(skill.name, skill.iconType, skill.iconValue, 12)}</span>
-                  <span>{skill.name}</span>
-                  {skill.level && (
-                    <span className="text-[8.5px] text-purple-400 font-black">{skill.level}%</span>
-                  )}
-                </span>
-              ))}
+      <div className="flex-1 flex flex-wrap gap-2 content-start">
+        {shown.map((skill) => {
+          const color = CATEGORY_COLORS[skill.category] || '#8B5CF6';
+          return (
+            <div
+              key={skill.name}
+              className="flex items-center gap-2 px-3 py-1.5 rounded-xl border border-white/10 bg-white/[0.04] hover:border-purple-500/40 transition-all"
+            >
+              <span className="shrink-0">{getSkillIcon(skill.name, skill.iconType, skill.iconValue, 20)}</span>
+              <span className="text-[11px] font-semibold text-gray-200 whitespace-nowrap">{skill.name}</span>
+              {skill.level && (
+                <span className="text-[9px] font-black" style={{ color }}>{skill.level}%</span>
+              )}
             </div>
-          </div>
-        ))}
+          );
+        })}
       </div>
     </div>
   );

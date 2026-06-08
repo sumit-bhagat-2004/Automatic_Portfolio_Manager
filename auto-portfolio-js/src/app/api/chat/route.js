@@ -112,18 +112,25 @@ CRITICAL RULES:
         return NextResponse.json({ error: 'Proxy URL not configured.' }, { status: 500 });
       }
 
-      // Build the endpoint: replace MODEL_ID placeholder or append model path
+      // Build the endpoint
       let proxyEndpoint;
-      if (proxyBase.includes('MODEL_ID')) {
-        proxyEndpoint = proxyBase.replace('MODEL_ID', modelId);
-      } else if (proxyBase.includes('/models/')) {
-        proxyEndpoint = proxyBase;
-      } else {
-        const base = proxyBase.replace(/\/+$/, '');
-        proxyEndpoint = `${base}/v1/models/${modelId}:generateContent`;
-      }
+      let useOpenAIFormat = false;
 
       if (proxyBase.includes('/chat/completions')) {
+        proxyEndpoint = proxyBase;
+        useOpenAIFormat = true;
+      } else if (proxyBase.includes('MODEL_ID')) {
+        proxyEndpoint = proxyBase.replace('MODEL_ID', modelId);
+      } else if (proxyBase.includes('/models/') && proxyBase.includes('generateContent')) {
+        proxyEndpoint = proxyBase;
+      } else {
+        // Plain base URL - assume OpenAI-compatible proxy
+        const base = proxyBase.replace(/\/+$/, '');
+        proxyEndpoint = `${base}/v1/chat/completions`;
+        useOpenAIFormat = true;
+      }
+
+      if (useOpenAIFormat) {
         headers['Authorization'] = `Bearer ${proxyKey}`;
         body = {
           model: modelId,
@@ -134,7 +141,10 @@ CRITICAL RULES:
         };
       } else {
         // Gemini-native format
-        if (proxyKey) headers['x-goog-api-key'] = proxyKey;
+        if (proxyKey) {
+          proxyEndpoint = `${proxyEndpoint}?key=${proxyKey}`;
+          headers['Authorization'] = `Bearer ${proxyKey}`;
+        }
         body = { contents };
       }
 
@@ -163,7 +173,7 @@ CRITICAL RULES:
     const data = await geminiRes.json();
     let reply = '';
 
-    if (method === 'proxy' && config?.geminiProxyUrl?.includes('/chat/completions')) {
+    if (method === 'proxy' && (config?.geminiProxyUrl?.includes('/chat/completions') || !config?.geminiProxyUrl?.includes('/models/'))) {
       reply = data?.choices?.[0]?.message?.content;
     } else {
       reply = data?.candidates?.[0]?.content?.parts?.[0]?.text;

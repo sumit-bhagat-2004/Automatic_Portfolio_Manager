@@ -50,21 +50,29 @@ Rules:
         return Response.json({ error: "Proxy URL not configured in database." }, { status: 500 });
       }
 
-      // Build the endpoint: replace MODEL_ID placeholder or append model path
+      // Build the endpoint
       let proxyEndpoint;
-      if (proxyBase.includes('MODEL_ID')) {
+      let useOpenAIFormat = false;
+
+      if (proxyBase.includes('/chat/completions')) {
+        // Explicit OpenAI-compatible endpoint
+        proxyEndpoint = proxyBase;
+        useOpenAIFormat = true;
+      } else if (proxyBase.includes('MODEL_ID')) {
+        // Gemini-native with MODEL_ID placeholder
         proxyEndpoint = proxyBase.replace('MODEL_ID', modelId);
-      } else if (proxyBase.includes('/models/')) {
-        // Already has a model path - use as is
+      } else if (proxyBase.includes('/models/') && proxyBase.includes('generateContent')) {
+        // Full Gemini-native URL already
         proxyEndpoint = proxyBase;
       } else {
-        // Base URL - construct Gemini-style path
+        // Plain base URL - assume OpenAI-compatible proxy (like gemini.bhagatsumit.xyz)
         const base = proxyBase.replace(/\/+$/, '');
-        proxyEndpoint = `${base}/v1/models/${modelId}:generateContent`;
+        proxyEndpoint = `${base}/v1/chat/completions`;
+        useOpenAIFormat = true;
       }
 
-      // Support OpenAI chat completion proxy formats
-      if (proxyBase.includes('/chat/completions')) {
+      if (useOpenAIFormat) {
+        // OpenAI-compatible format
         headers['Authorization'] = `Bearer ${proxyKey}`;
         body = {
           model: modelId,
@@ -72,7 +80,10 @@ Rules:
         };
       } else {
         // Gemini-native format
-        if (proxyKey) headers['x-goog-api-key'] = proxyKey;
+        if (proxyKey) {
+          proxyEndpoint = `${proxyEndpoint}?key=${proxyKey}`;
+          headers['Authorization'] = `Bearer ${proxyKey}`;
+        }
         body = {
           contents: [{ parts: [{ text: prompt }] }]
         };
@@ -106,7 +117,7 @@ Rules:
     const data = await geminiRes.json();
     let summary = '';
 
-    if (method === 'proxy' && config?.geminiProxyUrl?.includes('/chat/completions')) {
+    if (method === 'proxy' && (config?.geminiProxyUrl?.includes('/chat/completions') || !config?.geminiProxyUrl?.includes('/models/'))) {
       summary = data?.choices?.[0]?.message?.content;
     } else {
       summary = data?.candidates?.[0]?.content?.parts?.[0]?.text;
