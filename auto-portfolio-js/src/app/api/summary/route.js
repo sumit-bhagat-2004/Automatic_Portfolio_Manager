@@ -2,56 +2,90 @@ import { prisma } from '@/lib/prisma';
 
 export async function POST(req) {
   try {
-    const { readme } = await req.json();
-    if (!readme) {
+    const { readme, repoName, language, stars, tags } = await req.json();
+    if (!readme && !repoName) {
       return Response.json({ error: "Missing data" }, { status: 400 });
     }
 
     // Load AI configurations dynamically from the database
     const config = await prisma.config.findFirst();
     const method = config?.aiMethod || 'official';
-    
+    const modelId = config?.geminiModel || 'gemini-2.0-flash';
+
     let url = '';
     let headers = { 'Content-Type': 'application/json' };
     let body = {};
 
-    const prompt = `
-You are an expert technical writer. Read the following GitHub README content and summarize it in 1-2 short lines that describe what the project is, what it does, and its main tech stack if possible.
+    // Rich HTML description prompt
+    const prompt = `You are an expert full-stack developer and technical writer. Based on the GitHub repository data below, generate a rich, engaging project description in HTML format.
 
-README:
-${readme}
-`;
+Repository: ${repoName || 'Unknown'}
+Primary Language: ${language || 'Unknown'}
+Stars: ${stars || 0}
+Tags/Topics: ${(tags || []).join(', ') || 'None'}
+
+README Content:
+${readme || 'No README available.'}
+
+Generate a concise yet comprehensive HTML description with the following structure:
+- A short punchy opening sentence (wrapped in <p>)
+- A <ul> list of 3-5 key features/highlights
+- A closing sentence about the tech stack or use case (wrapped in <p>)
+
+Rules:
+- Keep it professional, developer-friendly, and accurate
+- Use <strong> for important terms, tech names
+- No markdown, no code blocks - pure HTML only
+- Max ~150 words total
+- Do NOT include <html>, <body>, <head> tags
+- Output ONLY the HTML snippet, nothing else`;
 
     if (method === 'proxy') {
-      const proxyUrl = config?.geminiProxyUrl;
+      // Use custom proxy endpoint with model substitution:
+      // Format: https://gemini.bhagatsumit.xyz/v1/models/${MODEL_ID}:generateContent
+      const proxyBase = config?.geminiProxyUrl;
       const proxyKey = config?.geminiProxyKey;
-      
-      if (!proxyUrl) {
+
+      if (!proxyBase) {
         return Response.json({ error: "Proxy URL not configured in database." }, { status: 500 });
       }
 
-      // If the proxy URL uses query parameters or standard Gemini format
-      url = proxyUrl.includes('?') ? `${proxyUrl}&key=${proxyKey}` : `${proxyUrl}?key=${proxyKey}`;
-      
+      // Build the endpoint: replace MODEL_ID placeholder or append model path
+      let proxyEndpoint;
+      if (proxyBase.includes('MODEL_ID')) {
+        proxyEndpoint = proxyBase.replace('MODEL_ID', modelId);
+      } else if (proxyBase.includes('/models/')) {
+        // Already has a model path - use as is
+        proxyEndpoint = proxyBase;
+      } else {
+        // Base URL - construct Gemini-style path
+        const base = proxyBase.replace(/\/+$/, '');
+        proxyEndpoint = `${base}/v1/models/${modelId}:generateContent`;
+      }
+
       // Support OpenAI chat completion proxy formats
-      if (proxyUrl.includes('/chat/completions')) {
+      if (proxyBase.includes('/chat/completions')) {
         headers['Authorization'] = `Bearer ${proxyKey}`;
         body = {
-          model: 'gemini-2.0-flash',
+          model: modelId,
           messages: [{ role: 'user', content: prompt }]
         };
       } else {
+        // Gemini-native format
+        if (proxyKey) headers['x-goog-api-key'] = proxyKey;
         body = {
           contents: [{ parts: [{ text: prompt }] }]
         };
       }
+
+      url = proxyEndpoint;
     } else {
-      // Official method
+      // Official Google Generative Language API
       const apiKey = config?.geminiApiKey || process.env.GEMINI_API_KEY;
       if (!apiKey) {
         return Response.json({ error: "Gemini API key not configured in database." }, { status: 500 });
       }
-      url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${apiKey}`;
+      url = `https://generativelanguage.googleapis.com/v1beta/models/${modelId}:generateContent?key=${apiKey}`;
       body = {
         contents: [{ parts: [{ text: prompt }] }]
       };
@@ -63,16 +97,27 @@ ${readme}
       body: JSON.stringify(body),
     });
 
+    if (!geminiRes.ok) {
+      const errData = await geminiRes.text();
+      console.error('Gemini API error response:', errData);
+      return Response.json({ error: `AI API returned ${geminiRes.status}: ${errData}` }, { status: 502 });
+    }
+
     const data = await geminiRes.json();
     let summary = '';
-    
+
     if (method === 'proxy' && config?.geminiProxyUrl?.includes('/chat/completions')) {
       summary = data?.choices?.[0]?.message?.content;
     } else {
       summary = data?.candidates?.[0]?.content?.parts?.[0]?.text;
     }
 
-    return Response.json({ summary: summary || "Could not summarize." });
+    // Clean up any accidental markdown code blocks
+    if (summary) {
+      summary = summary.replace(/^```html\s*/i, '').replace(/^```\s*/i, '').replace(/\s*```$/i, '').trim();
+    }
+
+    return Response.json({ summary: summary || "<p>No description available.</p>" });
   } catch (err) {
     console.error("Gemini Error:", err);
     return Response.json({ error: "Gemini API call failed: " + err.message }, { status: 500 });

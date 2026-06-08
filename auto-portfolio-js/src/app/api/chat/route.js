@@ -13,6 +13,12 @@ export async function POST(request) {
     const projects = await prisma.project.findMany({ where: { visible: true } });
     const timeline = await prisma.timelineEvent.findMany();
 
+    const name = config?.name || 'Sumit Bhagat';
+    const email = config?.email || 'sumitbhagat011@gmail.com';
+    const githubUrl = config?.githubUrl || 'https://github.com/sumit-bhagat-2004';
+    const linkedinUrl = config?.linkedinUrl || 'Available on request';
+    const twitterUrl = config?.twitterUrl || 'Available on request';
+
     // Parse Bento bio content
     let bioContent = '';
     if (config?.bentoData) {
@@ -21,6 +27,19 @@ export async function POST(request) {
         bioContent = bento.items?.find(item => item.id === 'bio')?.content || '';
       } catch (e) {
         console.error('Failed to parse bentoData:', e);
+      }
+    }
+
+    // Parse SkillsData
+    let skillsList = 'JavaScript, TypeScript, React, Next.js, Node.js, Python, Tailwind CSS, Prisma, SQL, Docker, Caddy, Git';
+    if (config?.skillsData) {
+      try {
+        const parsedSkills = JSON.parse(config.skillsData);
+        if (Array.isArray(parsedSkills) && parsedSkills.length > 0) {
+          skillsList = parsedSkills.map(s => s.name).join(', ');
+        }
+      } catch (e) {
+        console.error('Failed to parse skillsData:', e);
       }
     }
 
@@ -35,15 +54,19 @@ export async function POST(request) {
     }).join('\n');
 
     // 2. Build the System Prompt
-    const systemPrompt = `You are a helpful, professional, and friendly AI chatbot representing Sumit Bhagat on his portfolio website.
-Your primary role is to answer questions from recruiters and visitors about Sumit's background, projects, work experience, skills, and how to get in touch.
+    const defaultInstructions = `You are a helpful, professional, and friendly AI chatbot representing ${name} on his portfolio website.
+Your primary role is to answer questions from recruiters and visitors about ${name}'s background, projects, work experience, skills, and how to get in touch.`;
+
+    const customPrompt = config?.chatbotPrompt?.trim() || defaultInstructions;
+
+    const systemPrompt = `${customPrompt}
 
 Here is the verified context you must use:
 [BIO]
 ${bioContent || "Full-stack developer passionate about building innovative web applications and contributing to open source."}
 
 [SKILLS / TECHNOLOGIES]
-JavaScript, TypeScript, React, Next.js, Node.js, Python, Tailwind CSS, Prisma, SQL, Docker, Caddy, Git
+${skillsList}
 
 [PROJECTS]
 ${projectsContext || "No projects listed."}
@@ -52,20 +75,22 @@ ${projectsContext || "No projects listed."}
 ${timelineContext || "No timeline events listed."}
 
 [CONTACT INFO]
-- Email: sumitbhagat011@gmail.com
-- GitHub: https://github.com/sumit-bhagat-2004
-- LinkedIn: Available on request or via the contact section on the main page.
+- Email: ${email}
+- GitHub: ${githubUrl}
+- LinkedIn: ${linkedinUrl}
+- Twitter: ${twitterUrl}
 
 CRITICAL RULES:
-1. Only answer questions related to Sumit's professional background, skills, work, projects, and contact info.
+1. Only answer questions related to ${name}'s professional background, skills, work, projects, and contact info.
 2. If asked about personal matters (e.g., family, dating, political views, private life, or non-work-related topics) or random unrelated general knowledge (e.g., "how to bake a cake"), respond politely but firmly:
-   "I can only help you with questions about Sumit's work, experience, and projects."
+   "I can only help you with questions about ${name}'s work, experience, and projects."
 3. Do not make up facts. If the information is not in the context, say:
-   "I don't have that information. You can reach out to Sumit directly via email at sumitbhagat011@gmail.com."
+   "I don't have that information. You can reach out to ${name} directly via email at ${email}."
 4. Be brief, professional, and polite. Keep answers concise (1-3 sentences when possible).`;
 
     // 3. Setup endpoint based on database configuration
     const method = config?.aiMethod || 'official';
+    const modelId = config?.geminiModel || 'gemini-2.0-flash';
     let url = '';
     let headers = { 'Content-Type': 'application/json' };
     let body = {};
@@ -80,33 +105,46 @@ CRITICAL RULES:
     ];
 
     if (method === 'proxy') {
-      const proxyUrl = config?.geminiProxyUrl;
+      const proxyBase = config?.geminiProxyUrl;
       const proxyKey = config?.geminiProxyKey;
-      
-      if (!proxyUrl) {
+
+      if (!proxyBase) {
         return NextResponse.json({ error: 'Proxy URL not configured.' }, { status: 500 });
       }
 
-      url = proxyUrl.includes('?') ? `${proxyUrl}&key=${proxyKey}` : `${proxyUrl}?key=${proxyKey}`;
-      
-      if (proxyUrl.includes('/chat/completions')) {
+      // Build the endpoint: replace MODEL_ID placeholder or append model path
+      let proxyEndpoint;
+      if (proxyBase.includes('MODEL_ID')) {
+        proxyEndpoint = proxyBase.replace('MODEL_ID', modelId);
+      } else if (proxyBase.includes('/models/')) {
+        proxyEndpoint = proxyBase;
+      } else {
+        const base = proxyBase.replace(/\/+$/, '');
+        proxyEndpoint = `${base}/v1/models/${modelId}:generateContent`;
+      }
+
+      if (proxyBase.includes('/chat/completions')) {
         headers['Authorization'] = `Bearer ${proxyKey}`;
         body = {
-          model: 'gemini-2.0-flash',
+          model: modelId,
           messages: [
             { role: 'system', content: systemPrompt },
             ...messages.map(msg => ({ role: msg.role, content: msg.content }))
           ]
         };
       } else {
+        // Gemini-native format
+        if (proxyKey) headers['x-goog-api-key'] = proxyKey;
         body = { contents };
       }
+
+      url = proxyEndpoint;
     } else {
       const apiKey = config?.geminiApiKey || process.env.GEMINI_API_KEY;
       if (!apiKey) {
         return NextResponse.json({ error: 'Gemini API key not configured.' }, { status: 500 });
       }
-      url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${apiKey}`;
+      url = `https://generativelanguage.googleapis.com/v1beta/models/${modelId}:generateContent?key=${apiKey}`;
       body = { contents };
     }
 
@@ -116,9 +154,15 @@ CRITICAL RULES:
       body: JSON.stringify(body),
     });
 
+    if (!geminiRes.ok) {
+      const errText = await geminiRes.text();
+      console.error('Chat API error response:', errText);
+      return NextResponse.json({ error: `AI API returned ${geminiRes.status}` }, { status: 502 });
+    }
+
     const data = await geminiRes.json();
     let reply = '';
-    
+
     if (method === 'proxy' && config?.geminiProxyUrl?.includes('/chat/completions')) {
       reply = data?.choices?.[0]?.message?.content;
     } else {

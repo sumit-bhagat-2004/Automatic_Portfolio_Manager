@@ -3,6 +3,8 @@
 import { useEffect, useState } from 'react';
 import dynamic from 'next/dynamic';
 import { motion } from 'framer-motion';
+import { Sparkles } from 'lucide-react';
+import { getSkillIcon } from './sections/SkillsSection';
 
 // Dynamically import ActivityCalendar (named export, not default!)
 const ActivityCalendar = dynamic(
@@ -42,14 +44,14 @@ export default function BentoGrid({ config }) {
       
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4 auto-rows-[200px]">
         {bentoItems.map((item, index) => (
-          <BentoItem key={item.id} item={item} index={index} />
+          <BentoItem key={item.id} item={item} index={index} config={config} />
         ))}
       </div>
     </section>
   );
 }
 
-function BentoItem({ item, index }) {
+function BentoItem({ item, index, config }) {
   const sizeClasses = {
     small: 'md:col-span-1 md:row-span-1',
     medium: 'md:col-span-1 md:row-span-2',
@@ -67,7 +69,7 @@ function BentoItem({ item, index }) {
     >
       {item.type === 'github-calendar' && <GitHubCalendarWidget />}
       {item.type === 'stats' && <StatsWidget />}
-      {item.type === 'skills' && <SkillsWidget />}
+      {item.type === 'skills' && <SkillsWidget config={config} />}
       {item.type === 'pie-chart' && <TechStackPieChart />}
       {item.type === 'bio' && <BioWidget content={item.content} />}
     </motion.div>
@@ -192,52 +194,53 @@ function StatItem({ label, value }) {
   );
 }
 
-function SkillsWidget() {
-  const [projects, setProjects] = useState([]);
-  const [chartData, setChartData] = useState([]);
-  
-  useEffect(() => {
-    fetch('/api/projects?visible=true')
-      .then(res => res.json())
-      .then(data => {
-        setProjects(data);
-        
-        // Calculate language distribution
-        const langCount = {};
-        data.forEach(p => {
-          if (p.language) {
-            langCount[p.language] = (langCount[p.language] || 0) + 1;
-          }
-        });
-        
-        const colors = ['#8b5cf6', '#ec4899', '#3b82f6', '#10b981', '#f59e0b', '#ef4444'];
-        const chartData = Object.entries(langCount)
-          .sort((a, b) => b[1] - a[1])
-          .slice(0, 6)
-          .map(([lang, count], idx) => ({
-            name: lang,
-            value: count,
-            color: colors[idx]
-          }));
-        
-        setChartData(chartData);
-      })
-      .catch(console.error);
-  }, []);
+function SkillsWidget({ config }) {
+  const skills = (config?.skillsData && Array.isArray(config.skillsData) && config.skillsData.length > 0)
+    ? config.skillsData 
+    : [
+        { name: 'JavaScript', category: 'Languages', level: 90 },
+        { name: 'TypeScript', category: 'Languages', level: 85 },
+        { name: 'Python', category: 'Languages', level: 75 },
+        { name: 'React', category: 'Frontend', level: 90 },
+        { name: 'Next.js', category: 'Frontend', level: 85 },
+        { name: 'Tailwind CSS', category: 'Frontend', level: 95 },
+        { name: 'Node.js', category: 'Backend', level: 80 },
+        { name: 'Prisma', category: 'Backend', level: 80 },
+      ];
 
-  const skills = ['JavaScript', 'TypeScript', 'React', 'Next.js', 'Node.js', 'Python', 'Tailwind CSS', 'Prisma'];
+  // Group skills by category
+  const categories = skills.reduce((acc, skill) => {
+    const cat = skill.category || 'Other';
+    if (!acc[cat]) acc[cat] = [];
+    acc[cat].push(skill);
+    return acc;
+  }, {});
 
   return (
-    <div className="h-full flex flex-col">
-      <h3 className="text-lg font-semibold mb-4">Skills</h3>
-      <div className="flex-1 flex flex-wrap gap-2 content-start">
-        {skills.map((skill) => (
-          <span
-            key={skill}
-            className="px-3 py-1 bg-gray-800 rounded-full text-sm border border-gray-700 hover:border-gray-600 transition-colors"
-          >
-            {skill}
-          </span>
+    <div className="h-full flex flex-col justify-start text-left">
+      <h3 className="text-lg font-bold text-white mb-3 flex items-center gap-1.5">
+        <Sparkles size={16} className="text-purple-400" />
+        <span>Skills Overview</span>
+      </h3>
+      <div className="flex-1 overflow-y-auto space-y-3 pr-1 scrollbar-thin scrollbar-thumb-purple-900/40">
+        {Object.entries(categories).map(([catName, catSkills]) => (
+          <div key={catName} className="space-y-1">
+            <span className="text-[9px] uppercase font-black tracking-wider text-gray-500 pl-0.5">{catName}</span>
+            <div className="flex flex-wrap gap-1.5">
+              {catSkills.map((skill) => (
+                <span
+                  key={skill.name}
+                  className="inline-flex items-center gap-1.5 px-2.5 py-1 bg-white/5 border border-white/5 hover:border-purple-500/30 text-gray-300 hover:text-white rounded-lg text-[11px] font-semibold transition-all duration-300 hover:scale-105"
+                >
+                  <span className="shrink-0">{getSkillIcon(skill.name, skill.iconType, skill.iconValue, 12)}</span>
+                  <span>{skill.name}</span>
+                  {skill.level && (
+                    <span className="text-[8.5px] text-purple-400 font-black">{skill.level}%</span>
+                  )}
+                </span>
+              ))}
+            </div>
+          </div>
         ))}
       </div>
     </div>

@@ -22,6 +22,15 @@ model Config {
   geminiApiKey    String?
   geminiProxyUrl  String?
   geminiProxyKey  String?
+  geminiModel     String   @default("gemini-2.0-flash")
+  name            String   @default("Sumit Bhagat")
+  titles          String   @default("[\"Full-Stack Developer\", \"Crafting Digital Experiences\", \"Building Scalable Solutions\"]")
+  email           String   @default("sumitbhagat011@gmail.com")
+  githubUrl       String   @default("https://github.com/sumit-bhagat-2004")
+  linkedinUrl     String   @default("")
+  twitterUrl      String   @default("")
+  skillsData      String   @default("[]")
+  chatbotPrompt   String   @default("")
   createdAt       DateTime @default(now())
   updatedAt       DateTime @updatedAt
 }

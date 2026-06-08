@@ -9,6 +9,7 @@ import { FloatingNavbar } from '@/components/ui/floating-navbar';
 // Dynamically import section components
 const HeroSection = dynamic(() => import('./sections/HeroSection'), { ssr: false });
 const ProjectsSection = dynamic(() => import('./sections/ProjectsSection'), { ssr: false });
+const SkillsSection = dynamic(() => import('./sections/SkillsSection'), { ssr: false });
 const TimelineSection = dynamic(() => import('./sections/TimelineSection'), { ssr: false });
 const BentoSection = dynamic(() => import('./sections/BentoSection'), { ssr: false });
 const ContactSection = dynamic(() => import('./sections/ContactSection'), { ssr: false });
@@ -17,6 +18,7 @@ const Chatbot = dynamic(() => import('./Chatbot'), { ssr: false });
 const sectionComponents = {
   hero: HeroSection,
   projects: ProjectsSection,
+  skills: SkillsSection,
   timeline: TimelineSection,
   bento: BentoSection,
   contact: ContactSection,

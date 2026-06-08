@@ -4,7 +4,8 @@ import { useState, useEffect } from 'react';
 import { DragDropContext, Droppable, Draggable } from '@hello-pangea/dnd';
 import { 
   FolderGit2, Calendar, Layout, Settings, LogOut, Upload, Plus, Trash2, Edit3, 
-  Sparkles, RefreshCw, Image, FileText, Check, AlertCircle, Eye, EyeOff, Globe 
+  Sparkles, RefreshCw, Image, FileText, Check, AlertCircle, Eye, EyeOff, Globe,
+  User, Link2, MessageSquare
 } from 'lucide-react';
 import dynamic from 'next/dynamic';
 
@@ -38,6 +39,28 @@ export default function AdminPage() {
   const [geminiApiKey, setGeminiApiKey] = useState('');
   const [geminiProxyUrl, setGeminiProxyUrl] = useState('');
   const [geminiProxyKey, setGeminiProxyKey] = useState('');
+  const [geminiModel, setGeminiModel] = useState('gemini-2.0-flash');
+  const [generatingDesc, setGeneratingDesc] = useState(false);
+  const [genDescMessage, setGenDescMessage] = useState('');
+
+  // Dynamic Profile settings state
+  const [profileName, setProfileName] = useState('');
+  const [profileTitles, setProfileTitles] = useState([]);
+  const [profileEmail, setProfileEmail] = useState('');
+  const [profileGithub, setProfileGithub] = useState('');
+  const [profileLinkedin, setProfileLinkedin] = useState('');
+  const [profileTwitter, setProfileTwitter] = useState('');
+
+  // Dynamic Skills state
+  const [skillsList, setSkillsList] = useState([]);
+  const [newSkillName, setNewSkillName] = useState('');
+  const [newSkillCategory, setNewSkillCategory] = useState('Frontend');
+  const [newSkillLevel, setNewSkillLevel] = useState(80);
+  const [newSkillIconType, setNewSkillIconType] = useState('preset');
+  const [newSkillIconValue, setNewSkillIconValue] = useState('react');
+
+  // Dynamic Chatbot state
+  const [chatbotPrompt, setChatbotPrompt] = useState('');
   
   // Timeline state
   const [timelineEvents, setTimelineEvents] = useState([]);
@@ -107,11 +130,26 @@ export default function AdminPage() {
       setConfig(data);
       setLayoutOrder(data.layoutOrder || ['hero', 'projects', 'timeline', 'bento', 'contact']);
       
-      // Load AI settings into state
+      // Load AI settings
       setAiMethod(data.aiMethod || 'official');
       setGeminiApiKey(data.geminiApiKey || '');
       setGeminiProxyUrl(data.geminiProxyUrl || '');
       setGeminiProxyKey(data.geminiProxyKey || '');
+      setGeminiModel(data.geminiModel || 'gemini-2.0-flash');
+
+      // Load Profile info
+      setProfileName(data.name || 'Sumit Bhagat');
+      setProfileTitles(data.titles || ["Full-Stack Developer", "Crafting Digital Experiences", "Building Scalable Solutions"]);
+      setProfileEmail(data.email || 'sumitbhagat011@gmail.com');
+      setProfileGithub(data.githubUrl || 'https://github.com/sumit-bhagat-2004');
+      setProfileLinkedin(data.linkedinUrl || '');
+      setProfileTwitter(data.twitterUrl || '');
+
+      // Load Skills List
+      setSkillsList(data.skillsData || []);
+
+      // Load Chatbot prompt
+      setChatbotPrompt(data.chatbotPrompt || '');
     } catch (err) {
       console.error('Failed to load config:', err);
     }
@@ -406,22 +444,205 @@ export default function AdminPage() {
       const res = await fetch('/api/config', {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
         body: JSON.stringify({
           aiMethod,
-          geminiApiKey,
-          geminiProxyUrl,
-          geminiProxyKey,
+          geminiApiKey: geminiApiKey || null,
+          geminiProxyUrl: geminiProxyUrl || null,
+          geminiProxyKey: geminiProxyKey || null,
+          geminiModel: geminiModel || 'gemini-2.0-flash',
         }),
       });
       if (res.ok) {
         await loadConfig();
-        alert('AI settings saved successfully!');
+        alert('✅ AI settings saved successfully!');
       } else {
-        alert('Failed to save AI settings');
+        const errData = await res.json().catch(() => ({ error: res.statusText }));
+        console.error('Save AI settings error:', errData);
+        alert('❌ Failed to save AI settings: ' + (errData?.error || res.status));
       }
     } catch (err) {
       console.error('Failed to save AI settings:', err);
-      alert('Failed to save AI settings');
+      alert('❌ Network error saving AI settings: ' + err.message);
+    }
+  };
+
+  // Generate AI description by reading GitHub README
+  const handleGenerateDescription = async () => {
+    const repoName = projectForm.name?.trim();
+    if (!repoName) {
+      setGenDescMessage('⚠️ Enter a project/repo name first.');
+      return;
+    }
+
+    setGeneratingDesc(true);
+    setGenDescMessage('🔍 Fetching GitHub README...');
+
+    try {
+      // Try to detect owner from config githubUrl
+      const githubUrl = config?.githubUrl || '';
+      const ownerMatch = githubUrl.match(/github\.com\/([^/]+)/);
+      const owner = ownerMatch ? ownerMatch[1] : '';
+
+      let readme = '';
+      let language = projectForm.language || '';
+      let stars = 0;
+      let tags = projectForm.tags || [];
+
+      if (owner) {
+        try {
+          // Fetch repo info
+          const repoRes = await fetch(`https://api.github.com/repos/${owner}/${repoName}`);
+          if (repoRes.ok) {
+            const repoData = await repoRes.json();
+            language = repoData.language || language;
+            stars = repoData.stargazers_count || 0;
+            tags = repoData.topics || tags;
+          }
+
+          // Fetch README
+          const readmeRes = await fetch(`https://api.github.com/repos/${owner}/${repoName}/readme`, {
+            headers: { Accept: 'application/vnd.github.v3.raw' }
+          });
+          if (readmeRes.ok) {
+            const rawReadme = await readmeRes.text();
+            // Truncate to 6000 chars to avoid token limits
+            readme = rawReadme.substring(0, 6000);
+          }
+        } catch (ghErr) {
+          console.warn('GitHub fetch failed, proceeding with available data:', ghErr);
+        }
+      }
+
+      setGenDescMessage('✨ Generating AI description...');
+
+      const summaryRes = await fetch('/api/summary', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ readme, repoName, language, stars, tags })
+      });
+
+      const summaryData = await summaryRes.json();
+
+      if (!summaryRes.ok) {
+        setGenDescMessage('❌ Error: ' + (summaryData.error || 'Unknown error'));
+        return;
+      }
+
+      if (summaryData.summary) {
+        setProjectForm(prev => ({ ...prev, summary: summaryData.summary }));
+        setGenDescMessage('✅ Description generated successfully!');
+      } else {
+        setGenDescMessage('⚠️ AI returned an empty response.');
+      }
+    } catch (err) {
+      console.error('Generate description error:', err);
+      setGenDescMessage('❌ Failed: ' + err.message);
+    } finally {
+      setGeneratingDesc(false);
+      setTimeout(() => setGenDescMessage(''), 4000);
+    }
+  };
+
+  const handleProfileSettingsSave = async (e) => {
+    e.preventDefault();
+    try {
+      const res = await fetch('/api/config', {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          name: profileName,
+          titles: profileTitles,
+          email: profileEmail,
+          githubUrl: profileGithub,
+          linkedinUrl: profileLinkedin,
+          twitterUrl: profileTwitter
+        }),
+      });
+      if (res.ok) {
+        await loadConfig();
+        alert('Profile details updated successfully!');
+      } else {
+        alert('Failed to update profile details');
+      }
+    } catch (err) {
+      console.error('Failed to save profile settings:', err);
+      alert('Failed to save profile settings');
+    }
+  };
+
+  const handleAddSkill = async (e) => {
+    e.preventDefault();
+    if (!newSkillName.trim()) return;
+
+    const newSkill = {
+      name: newSkillName.trim(),
+      category: newSkillCategory,
+      level: parseInt(newSkillLevel) || 80,
+      iconType: newSkillIconType,
+      iconValue: newSkillIconValue
+    };
+
+    const updatedSkills = [...skillsList, newSkill];
+    setSkillsList(updatedSkills);
+    setNewSkillName('');
+    setNewSkillLevel(80);
+    setNewSkillIconType('preset');
+    setNewSkillIconValue('react');
+
+    try {
+      const res = await fetch('/api/config', {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ skillsData: updatedSkills })
+      });
+      if (res.ok) {
+        await loadConfig();
+      } else {
+        alert('Failed to add skill');
+      }
+    } catch (err) {
+      console.error('Failed to add skill:', err);
+    }
+  };
+
+  const handleDeleteSkill = async (skillName) => {
+    const updatedSkills = skillsList.filter(s => s.name !== skillName);
+    setSkillsList(updatedSkills);
+
+    try {
+      const res = await fetch('/api/config', {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ skillsData: updatedSkills })
+      });
+      if (res.ok) {
+        await loadConfig();
+      } else {
+        alert('Failed to delete skill');
+      }
+    } catch (err) {
+      console.error('Failed to delete skill:', err);
+    }
+  };
+
+  const handleChatbotPromptSave = async (e) => {
+    e.preventDefault();
+    try {
+      const res = await fetch('/api/config', {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ chatbotPrompt })
+      });
+      if (res.ok) {
+        await loadConfig();
+        alert('AI Chatbot tuner instructions updated!');
+      } else {
+        alert('Failed to save tuner instructions');
+      }
+    } catch (err) {
+      console.error('Failed to save prompt:', err);
+      alert('Error updating prompt');
     }
   };
   
@@ -576,6 +797,28 @@ export default function AdminPage() {
                     
                     <div>
                       <label className="block text-xs font-semibold text-gray-400 uppercase tracking-wider mb-2 pl-1">Project Description (Rich HTML Summary)</label>
+                      
+                      {/* AI Generate Button */}
+                      <div className="flex items-center gap-2 mb-2">
+                        <button
+                          type="button"
+                          onClick={handleGenerateDescription}
+                          disabled={generatingDesc}
+                          className="flex items-center gap-1.5 px-3 py-1.5 bg-purple-600/20 hover:bg-purple-600/30 border border-purple-500/30 text-purple-300 rounded-xl text-xs font-bold transition-all disabled:opacity-50 disabled:cursor-not-allowed"
+                        >
+                          <Sparkles size={12} className={generatingDesc ? 'animate-spin' : 'animate-pulse'} />
+                          <span>{generatingDesc ? 'Generating...' : 'Generate with AI'}</span>
+                        </button>
+                        {genDescMessage && (
+                          <span className={`text-xs font-semibold ${
+                            genDescMessage.startsWith('✅') ? 'text-green-400' :
+                            genDescMessage.startsWith('❌') ? 'text-red-400' :
+                            genDescMessage.startsWith('⚠️') ? 'text-yellow-400' :
+                            'text-purple-300'
+                          }`}>{genDescMessage}</span>
+                        )}
+                      </div>
+
                       <div className="bg-white text-black rounded-2xl overflow-hidden border border-white/10">
                         <ReactQuill
                           theme="snow"
@@ -712,7 +955,7 @@ export default function AdminPage() {
                   <button
                     onClick={handleGenerateTimeline}
                     disabled={generating}
-                    className="px-5 py-2.5 bg-purple-600 hover:bg-purple-500 disabled:bg-gray-800 disabled:text-gray-500 text-white rounded-xl text-sm font-bold shadow-lg shadow-purple-500/10 hover:shadow-purple-500/20 transition-all flex items-center gap-2"
+                    className="px-5 py-2.5 bg-purple-600 hover:bg-purple-700 disabled:bg-gray-800 disabled:text-gray-500 text-white rounded-xl text-sm font-bold shadow-lg shadow-purple-500/10 hover:shadow-purple-500/20 transition-all flex items-center gap-2"
                   >
                     <Sparkles size={14} className={generating ? 'animate-spin' : ''} />
                     <span>{generating ? 'Processing...' : 'AI Generate'}</span>
@@ -922,8 +1165,264 @@ export default function AdminPage() {
               <div className="space-y-8 animate-fade-in">
                 <div>
                   <h2 className="text-2xl font-black">Portfolio Settings</h2>
-                  <p className="text-xs text-gray-400 mt-1">Configure user uploads, active theme, and database AI settings</p>
+                  <p className="text-xs text-gray-400 mt-1">Configure profile details, categorized skills list, chatbot personality, and assets</p>
                 </div>
+
+                {/* 1. General Profile Panel */}
+                <form onSubmit={handleProfileSettingsSave} className="p-6 bg-white/5 border border-white/10 rounded-3xl space-y-4 shadow-xl">
+                  <h3 className="text-lg font-bold flex items-center gap-2 text-purple-300">
+                    <User size={18} />
+                    <span>General Profile Details</span>
+                  </h3>
+                  <div className="space-y-4">
+                    <div>
+                      <label className="block text-xs font-semibold text-gray-400 uppercase tracking-wider mb-2 pl-1">Full Name</label>
+                      <input
+                        type="text"
+                        placeholder="e.g. Sumit Bhagat"
+                        value={profileName}
+                        onChange={(e) => setProfileName(e.target.value)}
+                        className="w-full bg-white/5 border border-white/10 focus:border-purple-500 text-white px-4 py-3 rounded-2xl outline-none transition-colors text-sm"
+                        required
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-xs font-semibold text-gray-400 uppercase tracking-wider mb-2 pl-1">Animated Headline Titles (one per line)</label>
+                      <textarea
+                        placeholder="e.g. Full-Stack Developer&#10;Crafting Experiences"
+                        value={profileTitles.join('\n')}
+                        onChange={(e) => setProfileTitles(e.target.value.split('\n').filter(Boolean))}
+                        className="w-full bg-white/5 border border-white/10 focus:border-purple-500 text-white px-4 py-3 rounded-2xl outline-none transition-colors text-sm h-24 resize-none"
+                      />
+                    </div>
+                    <div className="grid grid-cols-2 gap-4">
+                      <div>
+                        <label className="block text-xs font-semibold text-gray-400 uppercase tracking-wider mb-2 pl-1">Public Contact Email</label>
+                        <input
+                          type="email"
+                          placeholder="email@domain.com"
+                          value={profileEmail}
+                          onChange={(e) => setProfileEmail(e.target.value)}
+                          className="w-full bg-white/5 border border-white/10 focus:border-purple-500 text-white px-4 py-3 rounded-2xl outline-none transition-colors text-sm"
+                          required
+                        />
+                      </div>
+                      <div>
+                        <label className="block text-xs font-semibold text-gray-400 uppercase tracking-wider mb-2 pl-1">GitHub Profile Link</label>
+                        <input
+                          type="url"
+                          placeholder="https://github.com/..."
+                          value={profileGithub}
+                          onChange={(e) => setProfileGithub(e.target.value)}
+                          className="w-full bg-white/5 border border-white/10 focus:border-purple-500 text-white px-4 py-3 rounded-2xl outline-none transition-colors text-sm"
+                        />
+                      </div>
+                    </div>
+                    <div className="grid grid-cols-2 gap-4">
+                      <div>
+                        <label className="block text-xs font-semibold text-gray-400 uppercase tracking-wider mb-2 pl-1">LinkedIn Profile Link</label>
+                        <input
+                          type="url"
+                          placeholder="https://linkedin.com/in/..."
+                          value={profileLinkedin}
+                          onChange={(e) => setProfileLinkedin(e.target.value)}
+                          className="w-full bg-white/5 border border-white/10 focus:border-purple-500 text-white px-4 py-3 rounded-2xl outline-none transition-colors text-sm"
+                        />
+                      </div>
+                      <div>
+                        <label className="block text-xs font-semibold text-gray-400 uppercase tracking-wider mb-2 pl-1">Twitter Profile Link</label>
+                        <input
+                          type="url"
+                          placeholder="https://twitter.com/..."
+                          value={profileTwitter}
+                          onChange={(e) => setProfileTwitter(e.target.value)}
+                          className="w-full bg-white/5 border border-white/10 focus:border-purple-500 text-white px-4 py-3 rounded-2xl outline-none transition-colors text-sm"
+                        />
+                      </div>
+                    </div>
+                  </div>
+                  <button type="submit" className="w-full py-3 bg-purple-600 hover:bg-purple-500 text-white font-bold rounded-2xl shadow-lg shadow-purple-500/20 hover:shadow-purple-500/30 transition-all text-sm flex items-center justify-center gap-1.5">
+                    <Check size={16} />
+                    <span>Save Profile Settings</span>
+                  </button>
+                </form>
+
+                {/* 2. Skills Directory Panel */}
+                <div className="p-6 bg-white/5 border border-white/10 rounded-3xl space-y-6 shadow-xl">
+                  <h3 className="text-lg font-bold flex items-center gap-2 text-purple-300">
+                    <Link2 size={18} />
+                    <span>Skills Directory & Manager</span>
+                  </h3>
+                  
+                   {/* Skill Add Form */}
+                  <form onSubmit={handleAddSkill} className="p-5 bg-white/5 border border-white/10 rounded-3xl space-y-4">
+                    <div className="grid grid-cols-2 gap-4">
+                      <div>
+                        <label className="block text-xs font-semibold text-gray-400 uppercase tracking-wider mb-2 pl-1">Skill Name</label>
+                        <input
+                          type="text"
+                          placeholder="e.g. Next.js, Docker"
+                          value={newSkillName}
+                          onChange={(e) => setNewSkillName(e.target.value)}
+                          className="w-full bg-white/5 border border-white/10 focus:border-purple-500 text-white px-4 py-3 rounded-2xl outline-none transition-colors text-sm"
+                          required
+                        />
+                      </div>
+                      <div>
+                        <label className="block text-xs font-semibold text-gray-400 uppercase tracking-wider mb-2 pl-1">Category</label>
+                        <select
+                          value={newSkillCategory}
+                          onChange={(e) => setNewSkillCategory(e.target.value)}
+                          className="w-full bg-gray-900 border border-white/10 focus:border-purple-500 text-white px-4 py-3 rounded-2xl outline-none text-sm cursor-pointer"
+                        >
+                          <option value="Languages">Languages</option>
+                          <option value="Frontend">Frontend</option>
+                          <option value="Backend">Backend</option>
+                          <option value="DevOps">DevOps</option>
+                          <option value="Tools">Tools</option>
+                        </select>
+                      </div>
+                    </div>
+
+                    <div>
+                      <div className="flex justify-between items-center mb-2 pl-1">
+                        <label className="block text-xs font-semibold text-gray-400 uppercase tracking-wider">Proficiency Level</label>
+                        <span className="text-xs font-bold text-purple-400">{newSkillLevel}%</span>
+                      </div>
+                      <div className="flex items-center gap-4">
+                        <input
+                          type="range"
+                          min="0"
+                          max="100"
+                          value={newSkillLevel}
+                          onChange={(e) => setNewSkillLevel(parseInt(e.target.value))}
+                          className="flex-1 accent-purple-600 h-1.5 bg-white/10 rounded-lg appearance-none cursor-pointer"
+                        />
+                        <input
+                          type="number"
+                          min="0"
+                          max="100"
+                          value={newSkillLevel}
+                          onChange={(e) => setNewSkillLevel(Math.min(100, Math.max(0, parseInt(e.target.value) || 0)))}
+                          className="w-16 bg-white/5 border border-white/10 text-center text-white text-xs py-1.5 rounded-lg outline-none"
+                        />
+                      </div>
+                    </div>
+
+                    <div className="grid grid-cols-2 gap-4">
+                      <div>
+                        <label className="block text-xs font-semibold text-gray-400 uppercase tracking-wider mb-2 pl-1">Icon Type</label>
+                        <select
+                          value={newSkillIconType}
+                          onChange={(e) => setNewSkillIconType(e.target.value)}
+                          className="w-full bg-gray-900 border border-white/10 focus:border-purple-500 text-white px-4 py-3 rounded-2xl outline-none text-sm cursor-pointer"
+                        >
+                          <option value="preset">Preset Icon</option>
+                          <option value="custom">Custom SVG Path</option>
+                        </select>
+                      </div>
+
+                      {newSkillIconType === 'preset' ? (
+                        <div>
+                          <label className="block text-xs font-semibold text-gray-400 uppercase tracking-wider mb-2 pl-1">Choose Preset</label>
+                          <select
+                            value={newSkillIconValue}
+                            onChange={(e) => setNewSkillIconValue(e.target.value)}
+                            className="w-full bg-gray-900 border border-white/10 focus:border-purple-500 text-white px-4 py-3 rounded-2xl outline-none text-sm cursor-pointer"
+                          >
+                            <option value="javascript">JavaScript</option>
+                            <option value="typescript">TypeScript</option>
+                            <option value="react">React</option>
+                            <option value="nextjs">Next.js</option>
+                            <option value="nodejs">Node.js</option>
+                            <option value="python">Python</option>
+                            <option value="tailwind">Tailwind CSS</option>
+                            <option value="prisma">Prisma</option>
+                            <option value="docker">Docker</option>
+                            <option value="git">Git</option>
+                            <option value="github">GitHub</option>
+                            <option value="html">HTML</option>
+                            <option value="css">CSS</option>
+                            <option value="postgresql">PostgreSQL</option>
+                            <option value="mongodb">MongoDB</option>
+                            <option value="sqlite">SQLite</option>
+                            <option value="aws">AWS</option>
+                            <option value="gcp">GCP</option>
+                            <option value="nginx">Nginx</option>
+                            <option value="linux">Linux</option>
+                            <option value="figma">Figma</option>
+                            <option value="java">Java</option>
+                          </select>
+                        </div>
+                      ) : (
+                        <div>
+                          <label className="block text-xs font-semibold text-gray-400 uppercase tracking-wider mb-2 pl-1">SVG Path (`d` attribute value)</label>
+                          <input
+                            type="text"
+                            placeholder="M12 2L2 22h20L12 2z"
+                            value={newSkillIconValue}
+                            onChange={(e) => setNewSkillIconValue(e.target.value)}
+                            className="w-full bg-white/5 border border-white/10 focus:border-purple-500 text-white px-4 py-3 rounded-2xl outline-none text-xs font-mono"
+                            required
+                          />
+                        </div>
+                      )}
+                    </div>
+
+                    <button 
+                      type="submit" 
+                      className="w-full py-3 bg-purple-600 hover:bg-purple-500 text-white font-bold rounded-2xl shadow-lg shadow-purple-500/10 hover:shadow-purple-500/20 transition-all text-sm flex items-center justify-center gap-1.5"
+                    >
+                      <Plus size={16} />
+                      <span>Register Technical Skill</span>
+                    </button>
+                  </form>
+
+                  {/* List of current skills */}
+                  <div className="space-y-3">
+                    <h4 className="text-xs font-semibold uppercase tracking-wider text-gray-500 pl-1">Active Skills ({skillsList.length})</h4>
+                    <div className="flex flex-wrap gap-2 max-h-[220px] overflow-y-auto pr-1">
+                      {skillsList.map((skill) => (
+                        <span key={skill.name} className="flex items-center gap-1.5 px-3 py-1.5 bg-white/5 border border-white/5 hover:border-purple-500/20 text-gray-300 rounded-xl text-xs font-semibold">
+                          <span>{skill.name}</span>
+                          <span className="text-[10px] px-1.5 py-0.5 bg-purple-500/10 text-purple-400 rounded-full font-bold">{skill.category}</span>
+                          <button
+                            type="button"
+                            onClick={() => handleDeleteSkill(skill.name)}
+                            className="text-gray-500 hover:text-red-400 transition-colors ml-1"
+                          >
+                            <Trash2 size={12} />
+                          </button>
+                        </span>
+                      ))}
+                      {skillsList.length === 0 && (
+                        <p className="text-xs text-gray-500 pl-1 italic">No custom skills defined. Falling back to default list.</p>
+                      )}
+                    </div>
+                  </div>
+                </div>
+
+                {/* 3. AI Chatbot Persona Tuner */}
+                <form onSubmit={handleChatbotPromptSave} className="p-6 bg-white/5 border border-white/10 rounded-3xl space-y-4 shadow-xl">
+                  <h3 className="text-lg font-bold flex items-center gap-2 text-purple-300">
+                    <MessageSquare size={18} />
+                    <span>AI Chatbot Assistant Personality</span>
+                  </h3>
+                  <div>
+                    <label className="block text-xs font-semibold text-gray-400 uppercase tracking-wider mb-2 pl-1">Custom Bot Instructions / System Prompt</label>
+                    <textarea
+                      placeholder="e.g. Act like a friendly virtual representation of Sumit. Be highly helpful but witty, and answer only professional questions."
+                      value={chatbotPrompt}
+                      onChange={(e) => setChatbotPrompt(e.target.value)}
+                      className="w-full bg-white/5 border border-white/10 focus:border-purple-500 text-white px-4 py-3 rounded-2xl outline-none transition-colors text-sm h-32 resize-none placeholder-gray-600 leading-relaxed font-sans"
+                    />
+                    <p className="text-[10px] text-gray-500 mt-1.5">This prompt defines how the floating chatbot responds. Context data (projects, timeline, and biography) is appended automatically.</p>
+                  </div>
+                  <button type="submit" className="w-full py-3 bg-purple-600 hover:bg-purple-500 text-white font-bold rounded-2xl shadow-lg shadow-purple-500/20 hover:shadow-purple-500/30 transition-all text-sm flex items-center justify-center gap-1.5">
+                    <Check size={16} />
+                    <span>Apply Chatbot Settings</span>
+                  </button>
+                </form>
                 
                 {/* Media & Uploads */}
                 <div className="p-6 bg-white/5 border border-white/10 rounded-3xl space-y-6 shadow-xl">
@@ -1021,6 +1520,42 @@ export default function AdminPage() {
                       </select>
                     </div>
 
+                    {/* Model Selector - single clean text field with quick chips */}
+                    <div>
+                      <label className="block text-xs font-semibold text-gray-400 uppercase tracking-wider mb-2 pl-1">AI Model ID</label>
+                      <input
+                        type="text"
+                        placeholder="e.g. gemini-2.0-flash"
+                        value={geminiModel}
+                        onChange={(e) => setGeminiModel(e.target.value)}
+                        className="w-full bg-white/5 border border-white/10 focus:border-purple-500 text-white px-4 py-3 rounded-2xl outline-none transition-colors text-sm font-mono placeholder-gray-600"
+                      />
+                      {/* Quick-pick model chips */}
+                      <div className="flex flex-wrap gap-1.5 mt-2">
+                        {[
+                          'gemini-2.0-flash',
+                          'gemini-2.0-flash-lite',
+                          'gemini-2.5-flash-preview-05-20',
+                          'gemini-2.5-pro-preview-06-05',
+                          'gemini-2.0-pro-exp-02-05',
+                        ].map(m => (
+                          <button
+                            key={m}
+                            type="button"
+                            onClick={() => setGeminiModel(m)}
+                            className={`px-2.5 py-1 rounded-lg text-[10px] font-mono font-bold border transition-all ${
+                              geminiModel === m
+                                ? 'bg-purple-600/30 border-purple-500/50 text-purple-300'
+                                : 'bg-white/5 border-white/10 text-gray-400 hover:border-purple-500/30 hover:text-purple-300'
+                            }`}
+                          >
+                            {m}
+                          </button>
+                        ))}
+                      </div>
+                      <p className="text-[10px] text-gray-500 mt-2">Proxy endpoint: <code className="text-purple-400">{'<base_url>'}/v1/models/<span className="text-yellow-400">{geminiModel || 'MODEL_ID'}</span>:generateContent</code></p>
+                    </div>
+
                     {aiMethod === 'official' ? (
                       <div>
                         <label className="block text-xs font-semibold text-gray-400 uppercase tracking-wider mb-2 pl-1">Official Gemini API Key</label>
@@ -1039,12 +1574,12 @@ export default function AdminPage() {
                           <label className="block text-xs font-semibold text-gray-400 uppercase tracking-wider mb-2 pl-1">Proxy Gateway Base URL</label>
                           <input
                             type="text"
-                            placeholder="https://gemini.yourdomain.xyz/v1/chat/completions"
+                            placeholder="https://gemini.yourdomain.xyz"
                             value={geminiProxyUrl}
                             onChange={(e) => setGeminiProxyUrl(e.target.value)}
                             className="w-full bg-white/5 border border-white/10 focus:border-purple-500 text-white px-4 py-3.5 rounded-2xl outline-none transition-colors text-sm font-mono placeholder-gray-600"
                           />
-                          <p className="text-[10px] text-gray-500 mt-1.5">Proxy server base path or endpoints mapping directly to Gemini LLMs.</p>
+                          <p className="text-[10px] text-gray-500 mt-1.5">Base URL of your proxy. Model path will be appended automatically: <code className="text-purple-400">/v1/models/{'{modelId}'}:generateContent</code></p>
                         </div>
                         <div>
                           <label className="block text-xs font-semibold text-gray-400 uppercase tracking-wider mb-2 pl-1">Proxy Authorization Token / Key</label>

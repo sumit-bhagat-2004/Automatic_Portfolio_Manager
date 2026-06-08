@@ -21,6 +21,14 @@ export async function GET() {
               { id: 'bio', type: 'bio', size: 'wide', content: 'Full-stack developer passionate about building innovative web applications and contributing to open source.' }
             ]
           }),
+          name: 'Sumit Bhagat',
+          titles: JSON.stringify(["Full-Stack Developer", "Crafting Digital Experiences", "Building Scalable Solutions"]),
+          email: 'sumitbhagat011@gmail.com',
+          githubUrl: 'https://github.com/sumit-bhagat-2004',
+          linkedinUrl: '',
+          twitterUrl: '',
+          skillsData: JSON.stringify([]),
+          chatbotPrompt: '',
         },
       });
     }
@@ -32,6 +40,8 @@ export async function GET() {
       ...config,
       layoutOrder: JSON.parse(config.layoutOrder),
       bentoData: config.bentoData ? JSON.parse(config.bentoData) : null,
+      titles: config.titles ? JSON.parse(config.titles) : ["Full-Stack Developer", "Crafting Digital Experiences", "Building Scalable Solutions"],
+      skillsData: config.skillsData ? JSON.parse(config.skillsData) : [],
       // Hide secrets from visitors, return them only to authenticated admin
       geminiApiKey: isAdmin ? config.geminiApiKey : null,
       geminiProxyUrl: isAdmin ? config.geminiProxyUrl : null,
@@ -65,7 +75,16 @@ export async function PUT(request) {
       aiMethod, 
       geminiApiKey, 
       geminiProxyUrl, 
-      geminiProxyKey 
+      geminiProxyKey,
+      geminiModel,
+      name,
+      titles,
+      email,
+      githubUrl,
+      linkedinUrl,
+      twitterUrl,
+      skillsData,
+      chatbotPrompt
     } = body;
 
     const updateData = {};
@@ -78,6 +97,15 @@ export async function PUT(request) {
     if (geminiApiKey !== undefined) updateData.geminiApiKey = geminiApiKey;
     if (geminiProxyUrl !== undefined) updateData.geminiProxyUrl = geminiProxyUrl;
     if (geminiProxyKey !== undefined) updateData.geminiProxyKey = geminiProxyKey;
+    if (geminiModel !== undefined) updateData.geminiModel = geminiModel;
+    if (name !== undefined) updateData.name = name;
+    if (titles !== undefined) updateData.titles = JSON.stringify(titles);
+    if (email !== undefined) updateData.email = email;
+    if (githubUrl !== undefined) updateData.githubUrl = githubUrl;
+    if (linkedinUrl !== undefined) updateData.linkedinUrl = linkedinUrl;
+    if (twitterUrl !== undefined) updateData.twitterUrl = twitterUrl;
+    if (skillsData !== undefined) updateData.skillsData = JSON.stringify(skillsData);
+    if (chatbotPrompt !== undefined) updateData.chatbotPrompt = chatbotPrompt;
 
     const existingConfig = await prisma.config.findFirst();
 
@@ -99,6 +127,14 @@ export async function PUT(request) {
           geminiApiKey: geminiApiKey || null,
           geminiProxyUrl: geminiProxyUrl || null,
           geminiProxyKey: geminiProxyKey || null,
+          name: name || 'Sumit Bhagat',
+          titles: JSON.stringify(titles || ["Full-Stack Developer", "Crafting Digital Experiences", "Building Scalable Solutions"]),
+          email: email || 'sumitbhagat011@gmail.com',
+          githubUrl: githubUrl || 'https://github.com/sumit-bhagat-2004',
+          linkedinUrl: linkedinUrl || '',
+          twitterUrl: twitterUrl || '',
+          skillsData: JSON.stringify(skillsData || []),
+          chatbotPrompt: chatbotPrompt || '',
         },
       });
     }
@@ -107,6 +143,8 @@ export async function PUT(request) {
       ...config,
       layoutOrder: JSON.parse(config.layoutOrder),
       bentoData: config.bentoData ? JSON.parse(config.bentoData) : null,
+      titles: config.titles ? JSON.parse(config.titles) : [],
+      skillsData: config.skillsData ? JSON.parse(config.skillsData) : [],
     });
   } catch (error) {
     console.error('Error updating config:', error);

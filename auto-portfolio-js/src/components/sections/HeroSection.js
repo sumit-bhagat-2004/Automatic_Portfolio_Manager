@@ -1,18 +1,36 @@
+'use client';
+
 import { motion } from 'framer-motion';
 import { Mail, Github, ArrowDown, Download } from 'lucide-react';
 import { TypeAnimation } from 'react-type-animation';
 import { Button } from '@/components/ui/Button';
 
 export default function HeroSection({ config }) {
-  const githubUsername = process.env.NEXT_PUBLIC_GITHUB_USERNAME || 'sumit-bhagat-2004';
-  const emailAddress = 'sumitbhagat011@gmail.com';
+  const emailAddress = config?.email || 'sumitbhagat011@gmail.com';
+  const githubUrl = config?.githubUrl || 'https://github.com/sumit-bhagat-2004';
+  const name = config?.name || 'Sumit Bhagat';
   
+  // Build dynamic animation sequence from titles
+  const animationSequence = [];
+  if (config?.titles && Array.isArray(config.titles) && config.titles.length > 0) {
+    config.titles.forEach(title => {
+      animationSequence.push(title);
+      animationSequence.push(2000);
+    });
+  } else {
+    animationSequence.push(
+      'Crafting Digital Experiences', 2000,
+      'Building Scalable Solutions', 2000,
+      'Full-Stack Developer', 2000,
+      'Open Source Contributor', 2000
+    );
+  }
+
   // Use uploaded profile picture, fallback to default photo
   const avatarUrl = config?.userImage || '/photo_2025-06-13_23-09-39(1).jpg';
   
   return (
     <section id="hero" className="relative min-h-screen w-full flex flex-col justify-center items-center text-center px-4">
-      {/* Removed GitHub Corner Ribbon */}
       <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="relative z-10 max-w-5xl mx-auto">
         {/* Animated Profile Image */}
         <motion.div
@@ -24,7 +42,7 @@ export default function HeroSection({ config }) {
           <div className="absolute inset-0 bg-gradient-to-r from-purple-500 via-pink-500 to-blue-500 rounded-full blur-2xl opacity-50 animate-pulse-glow" />
           <img
             src={avatarUrl}
-            alt="Sumit Bhagat"
+            alt={name}
             className="relative w-28 h-28 sm:w-36 sm:h-36 md:w-44 md:h-44 rounded-full border-4 border-purple-500/50 shadow-2xl shadow-purple-500/50 ring-4 ring-purple-500/20 ring-offset-4 ring-offset-black object-cover"
           />
         </motion.div>
@@ -36,26 +54,20 @@ export default function HeroSection({ config }) {
           className="text-6xl md:text-7xl font-black mb-8"
         >
           <span className="bg-gradient-to-r from-purple-400 via-pink-400 to-yellow-400 bg-clip-text text-transparent">
-            Sumit Bhagat
+            {name}
           </span>
         </motion.h1>
         
         <div className="h-20 mb-12">
-          <TypeAnimation
-            sequence={[
-              'Crafting Digital Experiences',
-              2000,
-              'Building Scalable Solutions',
-              2000,
-              'Full-Stack Developer',
-              2000,
-              'Open Source Contributor',
-              2000
-            ]}
-            wrapper="p"
-            className="text-3xl md:text-4xl font-light bg-gradient-to-r from-gray-300 to-purple-200 bg-clip-text text-transparent"
-            repeat={Infinity}
-          />
+          {animationSequence.length > 0 && (
+            <TypeAnimation
+              key={JSON.stringify(config?.titles || [])} // Force re-render if titles change
+              sequence={animationSequence}
+              wrapper="p"
+              className="text-3xl md:text-4xl font-light bg-gradient-to-r from-gray-300 to-purple-200 bg-clip-text text-transparent"
+              repeat={Infinity}
+            />
+          )}
         </div>
         
         <motion.div 
@@ -84,7 +96,7 @@ export default function HeroSection({ config }) {
           <Button
             size="lg"
             variant="outline"
-            onClick={() => window.open(`https://github.com/${githubUsername}`, '_blank')}
+            onClick={() => window.open(githubUrl, '_blank')}
           >
             <Github className="mr-2" /> View GitHub
           </Button>
@@ -102,4 +114,3 @@ export default function HeroSection({ config }) {
     </section>
   );
 }
-
