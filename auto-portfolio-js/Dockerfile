@@ -30,14 +30,14 @@ RUN apk add --no-cache openssl
 
 WORKDIR /app
 
-# Copy package files
+# Copy package files and prisma schema
 COPY package*.json ./
+COPY --from=builder /app/prisma ./prisma
 
 # Install production dependencies only
 RUN npm ci --only=production
 
-# Copy Prisma schema
-COPY --from=builder /app/prisma ./prisma
+# Copy generated Prisma clients from builder stage
 COPY --from=builder /app/node_modules/.prisma ./node_modules/.prisma
 COPY --from=builder /app/node_modules/@prisma ./node_modules/@prisma
 
