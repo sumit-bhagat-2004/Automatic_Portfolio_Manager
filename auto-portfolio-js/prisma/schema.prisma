@@ -12,14 +12,18 @@ datasource db {
 }
 
 model Config {
-  id          Int      @id @default(autoincrement())
-  theme       String   @default("dark")
-  layoutOrder String   @default("[]") // JSON array of section names
-  resumeUrl   String?
-  userImage   String?  // URL for the user's profile image
-  bentoData   String?  // JSON for bento grid configuration
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
+  id              Int      @id @default(autoincrement())
+  theme           String   @default("dark")
+  layoutOrder     String   @default("[]") // JSON array of section names
+  resumeUrl       String?
+  userImage       String?  // URL for the user's profile image
+  bentoData       String?  // JSON for bento grid configuration
+  aiMethod        String   @default("official")
+  geminiApiKey    String?
+  geminiProxyUrl  String?
+  geminiProxyKey  String?
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
 }
 
 model Project {

@@ -2,6 +2,10 @@
 
 import { useState, useEffect } from 'react';
 import { DragDropContext, Droppable, Draggable } from '@hello-pangea/dnd';
+import { 
+  FolderGit2, Calendar, Layout, Settings, LogOut, Upload, Plus, Trash2, Edit3, 
+  Sparkles, RefreshCw, Image, FileText, Check, AlertCircle, Eye, EyeOff, Globe 
+} from 'lucide-react';
 import dynamic from 'next/dynamic';
 
 // Dynamically import React Quill to avoid SSR issues
@@ -10,7 +14,6 @@ import 'react-quill/dist/quill.snow.css';
 
 export default function AdminPage() {
   const [authenticated, setAuthenticated] = useState(false);
-  const [password, setPassword] = useState('');
   const [activeTab, setActiveTab] = useState('projects');
   
   // Projects state
@@ -29,6 +32,12 @@ export default function AdminPage() {
   // Config state
   const [config, setConfig] = useState(null);
   const [layoutOrder, setLayoutOrder] = useState([]);
+  
+  // Dynamic AI settings state
+  const [aiMethod, setAiMethod] = useState('official');
+  const [geminiApiKey, setGeminiApiKey] = useState('');
+  const [geminiProxyUrl, setGeminiProxyUrl] = useState('');
+  const [geminiProxyKey, setGeminiProxyKey] = useState('');
   
   // Timeline state
   const [timelineEvents, setTimelineEvents] = useState([]);
@@ -51,10 +60,15 @@ export default function AdminPage() {
   useEffect(() => {
     const checkAuth = async () => {
       try {
-        const res = await fetch('/api/admin/verify', { credentials: 'include' });
-        if (res.ok) setAuthenticated(true);
+        const res = await fetch('/api/admin/verify');
+        if (res.ok) {
+          setAuthenticated(true);
+        } else {
+          window.location.href = '/admin/login';
+        }
       } catch (err) {
         console.error('Auth check failed:', err);
+        window.location.href = '/admin/login';
       }
     };
     checkAuth();
@@ -69,24 +83,11 @@ export default function AdminPage() {
     }
   }, [authenticated]);
   
-  const handleLogin = async (e) => {
-    e.preventDefault();
-    try {
-      const res = await fetch('/api/admin/login', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ password }),
-        credentials: 'include'
-      });
-      if (res.ok) {
-        setAuthenticated(true);
-        setPassword('');
-      } else {
-        alert('Invalid password');
-      }
-    } catch (err) {
-      alert('Login failed');
-    }
+  const handleLogout = () => {
+    document.cookie = "admin-auth=; path=/; expires=Thu, 01 Jan 1970 00:00:00 GMT";
+    document.cookie = "admin_authenticated=; path=/; expires=Thu, 01 Jan 1970 00:00:00 GMT";
+    localStorage.removeItem('admin-auth');
+    window.location.href = '/admin/login';
   };
   
   const loadProjects = async () => {
@@ -105,6 +106,12 @@ export default function AdminPage() {
       const data = await res.json();
       setConfig(data);
       setLayoutOrder(data.layoutOrder || ['hero', 'projects', 'timeline', 'bento', 'contact']);
+      
+      // Load AI settings into state
+      setAiMethod(data.aiMethod || 'official');
+      setGeminiApiKey(data.geminiApiKey || '');
+      setGeminiProxyUrl(data.geminiProxyUrl || '');
+      setGeminiProxyKey(data.geminiProxyKey || '');
     } catch (err) {
       console.error('Failed to load config:', err);
     }
@@ -131,7 +138,6 @@ export default function AdminPage() {
         tags: JSON.stringify(projectForm.tags || [])
       };
       
-      // Include ID for PUT requests in the body
       if (selectedProject) {
         payload.id = selectedProject.id;
       }
@@ -145,7 +151,7 @@ export default function AdminPage() {
       if (res.ok) {
         await loadProjects();
         resetProjectForm();
-        alert('Project saved!');
+        alert('Project saved successfully!');
       } else {
         const error = await res.json();
         alert(`Failed to save: ${error.error || 'Unknown error'}`);
@@ -192,7 +198,6 @@ export default function AdminPage() {
     });
   };
   
-  // Safe JSON parser
   const safeParseJSON = (str, defaultValue = []) => {
     if (!str || str === 'null' || str === 'undefined') return defaultValue;
     try {
@@ -211,7 +216,6 @@ export default function AdminPage() {
       
       const payload = { ...eventForm };
       
-      // Include ID for PUT requests
       if (selectedEvent) {
         payload.id = selectedEvent.id;
       }
@@ -225,7 +229,7 @@ export default function AdminPage() {
       if (res.ok) {
         await loadTimeline();
         resetEventForm();
-        alert('Timeline event saved!');
+        alert('Timeline event saved successfully!');
       } else {
         const error = await res.json();
         alert(`Failed to save: ${error.error || 'Unknown error'}`);
@@ -277,7 +281,6 @@ export default function AdminPage() {
     const [reordered] = items.splice(result.source.index, 1);
     items.splice(result.destination.index, 0, reordered);
     
-    // Update orderIndex for all items
     const updated = items.map((item, index) => ({
       ...item,
       orderIndex: index
@@ -285,7 +288,6 @@ export default function AdminPage() {
     
     setTimelineEvents(updated);
     
-    // Save new order to database
     try {
       for (const item of updated) {
         await fetch('/api/timeline', {
@@ -363,10 +365,63 @@ export default function AdminPage() {
       });
       
       loadConfig();
-      alert('Resume uploaded!');
+      alert('Resume uploaded successfully!');
     } catch (err) {
       console.error('Failed to upload resume:', err);
       alert('Upload failed');
+    }
+  };
+
+  const handleAvatarUpload = async (e) => {
+    const file = e.target.files[0];
+    if (!file) return;
+    
+    const formData = new FormData();
+    formData.append('file', file);
+    
+    try {
+      const res = await fetch('/api/upload', {
+        method: 'POST',
+        body: formData
+      });
+      const data = await res.json();
+      
+      await fetch('/api/config', {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ userImage: data.url })
+      });
+      
+      loadConfig();
+      alert('Avatar uploaded successfully!');
+    } catch (err) {
+      console.error('Failed to upload avatar:', err);
+      alert('Avatar upload failed');
+    }
+  };
+
+  const handleAISettingsSave = async (e) => {
+    e.preventDefault();
+    try {
+      const res = await fetch('/api/config', {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          aiMethod,
+          geminiApiKey,
+          geminiProxyUrl,
+          geminiProxyKey,
+        }),
+      });
+      if (res.ok) {
+        await loadConfig();
+        alert('AI settings saved successfully!');
+      } else {
+        alert('Failed to save AI settings');
+      }
+    } catch (err) {
+      console.error('Failed to save AI settings:', err);
+      alert('Failed to save AI settings');
     }
   };
   
@@ -387,312 +442,388 @@ export default function AdminPage() {
   
   if (!authenticated) {
     return (
-      <div className="min-h-screen bg-gray-900 flex items-center justify-center">
-        <div className="bg-gray-800 p-8 rounded-lg shadow-lg w-96">
-          <h1 className="text-2xl font-bold text-white mb-6">🔐 Admin Login</h1>
-          <form onSubmit={handleLogin}>
-            <input
-              type="password"
-              value={password}
-              onChange={(e) => setPassword(e.target.value)}
-              placeholder="Enter admin password"
-              className="w-full px-4 py-2 bg-gray-700 text-white rounded mb-4"
-            />
-            <button
-              type="submit"
-              className="w-full bg-blue-600 hover:bg-blue-700 text-white py-2 rounded"
-            >
-              Login
-            </button>
-          </form>
-        </div>
+      <div className="min-h-screen bg-black flex items-center justify-center">
+        <div className="w-12 h-12 border-4 border-purple-500 border-t-transparent rounded-full animate-spin" />
       </div>
     );
   }
   
   return (
-    <div className="min-h-screen bg-gray-900 text-white">
-      {/* Split Screen Layout */}
-      <div className="flex h-screen">
-        {/* Left Panel - Editor */}
-        <div className="w-1/2 overflow-y-auto border-r border-gray-700">
-          <div className="p-6">
-            <h1 className="text-3xl font-bold mb-6 bg-gradient-to-r from-purple-400 via-pink-400 to-blue-400 bg-clip-text text-transparent">
-              🚀 God-Mode Admin Console
+    <div className="min-h-screen bg-black text-white font-sans flex flex-col">
+      {/* Top Navbar */}
+      <header className="sticky top-0 z-40 bg-gray-950/80 backdrop-blur-xl border-b border-white/10 px-6 py-4 flex items-center justify-between">
+        <div className="flex items-center gap-2">
+          <div className="w-9 h-9 rounded-xl bg-gradient-to-tr from-purple-600 to-blue-600 flex items-center justify-center shadow-lg shadow-purple-500/20">
+            <Sparkles size={18} className="text-white" />
+          </div>
+          <div>
+            <h1 className="text-lg font-black bg-gradient-to-r from-white via-purple-200 to-pink-200 bg-clip-text text-transparent">
+              CMS Dashboard
             </h1>
+            <p className="text-[10px] text-gray-500 uppercase font-semibold tracking-wider">Portfolio Management</p>
+          </div>
+        </div>
+
+        <button
+          onClick={handleLogout}
+          className="px-4 py-2 bg-red-600/10 hover:bg-red-600/20 text-red-400 border border-red-500/20 rounded-xl text-sm font-semibold transition-all duration-300 flex items-center gap-1.5"
+        >
+          <LogOut size={16} />
+          <span>Sign Out</span>
+        </button>
+      </header>
+
+      {/* Split Screen Layout */}
+      <div className="flex-1 flex overflow-hidden">
+        
+        {/* Left Panel - Editor Controls */}
+        <div className="w-1/2 overflow-y-auto border-r border-white/10 bg-gray-950/30">
+          <div className="p-8">
             
             {/* Tabs */}
-            <div className="flex gap-2 mb-6 flex-wrap">
-              <button
-                onClick={() => setActiveTab('projects')}
-                className={`px-4 py-2 rounded transition-colors ${activeTab === 'projects' ? 'bg-blue-600' : 'bg-gray-700 hover:bg-gray-600'}`}
-              >
-                📁 Projects
-              </button>
-              <button
-                onClick={() => setActiveTab('timeline')}
-                className={`px-4 py-2 rounded transition-colors ${activeTab === 'timeline' ? 'bg-blue-600' : 'bg-gray-700 hover:bg-gray-600'}`}
-              >
-                📅 Timeline
-              </button>
-              <button
-                onClick={() => setActiveTab('layout')}
-                className={`px-4 py-2 rounded transition-colors ${activeTab === 'layout' ? 'bg-blue-600' : 'bg-gray-700 hover:bg-gray-600'}`}
-              >
-                🎨 Layout
-              </button>
-              <button
-                onClick={() => setActiveTab('settings')}
-                className={`px-4 py-2 rounded transition-colors ${activeTab === 'settings' ? 'bg-blue-600' : 'bg-gray-700 hover:bg-gray-600'}`}
-              >
-                ⚙️ Settings
-              </button>
+            <div className="flex gap-2 p-1.5 bg-white/5 border border-white/5 rounded-2xl mb-8">
+              {[
+                { id: 'projects', label: 'Projects', icon: FolderGit2 },
+                { id: 'timeline', label: 'Timeline', icon: Calendar },
+                { id: 'layout', label: 'Layout', icon: Layout },
+                { id: 'settings', label: 'Settings', icon: Settings }
+              ].map(tab => {
+                const Icon = tab.icon;
+                return (
+                  <button
+                    key={tab.id}
+                    onClick={() => setActiveTab(tab.id)}
+                    className={`flex-1 flex items-center justify-center gap-2 py-3 rounded-xl text-sm font-bold transition-all duration-300 ${
+                      activeTab === tab.id 
+                        ? 'bg-gradient-to-r from-purple-600 to-blue-600 text-white shadow-lg shadow-purple-500/20' 
+                        : 'text-gray-400 hover:text-white hover:bg-white/5'
+                    }`}
+                  >
+                    <Icon size={16} />
+                    <span>{tab.label}</span>
+                  </button>
+                );
+              })}
             </div>
             
-            {/* Projects Tab */}
+            {/* Tab: Projects */}
             {activeTab === 'projects' && (
-              <div>
-                <div className="flex justify-between items-center mb-4">
-                  <h2 className="text-2xl font-bold">Projects Management</h2>
+              <div className="space-y-6">
+                <div className="flex justify-between items-center">
+                  <div>
+                    <h2 className="text-2xl font-black">Projects Catalog</h2>
+                    <p className="text-xs text-gray-400 mt-1">Manage project details, metadata, and visibility</p>
+                  </div>
                   <button
                     onClick={handleGitHubSync}
                     disabled={syncing}
-                    className="px-4 py-2 bg-green-600 hover:bg-green-700 rounded disabled:opacity-50 transition-colors"
+                    className="px-5 py-2.5 bg-green-600 hover:bg-green-500 disabled:bg-gray-800 disabled:text-gray-500 text-white rounded-xl text-sm font-bold shadow-lg shadow-green-500/10 hover:shadow-green-500/20 transition-all flex items-center gap-2"
                   >
-                    {syncing ? '⏳ Syncing...' : '🔄 Sync GitHub'}
+                    <RefreshCw size={14} className={syncing ? 'animate-spin' : ''} />
+                    <span>{syncing ? 'Syncing...' : 'Sync GitHub'}</span>
                   </button>
                 </div>
+
                 {syncMessage && (
-                  <div className="mb-4 p-3 bg-gray-800 rounded border border-gray-700">{syncMessage}</div>
+                  <div className="p-4 bg-purple-950/20 border border-purple-500/20 rounded-2xl text-purple-300 text-sm flex items-center gap-2">
+                    <Sparkles size={16} className="shrink-0" />
+                    <span>{syncMessage}</span>
+                  </div>
                 )}
                 
-                {/* Project Form with Rich Text Editor */}
-                <form onSubmit={handleProjectSave} className="mb-6 p-6 bg-gray-800 rounded-lg border border-gray-700">
-                  <h3 className="text-lg font-bold mb-4">
-                    {selectedProject ? '✏️ Edit Project' : '➕ Add New Project'}
+                {/* Project Editor Form */}
+                <form onSubmit={handleProjectSave} className="p-6 bg-white/5 border border-white/10 rounded-3xl shadow-xl space-y-4">
+                  <h3 className="text-lg font-bold flex items-center gap-2 text-purple-300">
+                    <Plus size={18} />
+                    <span>{selectedProject ? 'Modify Project' : 'Register New Project'}</span>
                   </h3>
                   
-                  <div className="space-y-3">
-                    <input
-                      type="text"
-                      placeholder="Project Name *"
-                      value={projectForm.name}
-                      onChange={(e) => setProjectForm({...projectForm, name: e.target.value})}
-                      className="w-full px-3 py-2 bg-gray-700 rounded border border-gray-600 focus:border-blue-500 outline-none"
-                      required
-                    />
-                    
-                    <input
-                      type="url"
-                      placeholder="Project URL (https://...)"
-                      value={projectForm.url}
-                      onChange={(e) => setProjectForm({...projectForm, url: e.target.value})}
-                      className="w-full px-3 py-2 bg-gray-700 rounded border border-gray-600 focus:border-blue-500 outline-none"
-                    />
-                    
-                    <input
-                      type="text"
-                      placeholder="Primary Language (e.g., JavaScript, Python)"
-                      value={projectForm.language}
-                      onChange={(e) => setProjectForm({...projectForm, language: e.target.value})}
-                      className="w-full px-3 py-2 bg-gray-700 rounded border border-gray-600 focus:border-blue-500 outline-none"
-                    />
+                  <div className="space-y-4">
+                    <div className="grid grid-cols-2 gap-4">
+                      <div>
+                        <label className="block text-xs font-semibold text-gray-400 uppercase tracking-wider mb-2 pl-1">Project Name *</label>
+                        <input
+                          type="text"
+                          placeholder="e.g. vertex-vault"
+                          value={projectForm.name}
+                          onChange={(e) => setProjectForm({...projectForm, name: e.target.value})}
+                          className="w-full bg-white/5 border border-white/10 focus:border-purple-500 text-white px-4 py-3 rounded-2xl outline-none transition-colors text-sm"
+                          required
+                        />
+                      </div>
+                      <div>
+                        <label className="block text-xs font-semibold text-gray-400 uppercase tracking-wider mb-2 pl-1">Primary Language</label>
+                        <input
+                          type="text"
+                          placeholder="e.g. Python, TypeScript"
+                          value={projectForm.language}
+                          onChange={(e) => setProjectForm({...projectForm, language: e.target.value})}
+                          className="w-full bg-white/5 border border-white/10 focus:border-purple-500 text-white px-4 py-3 rounded-2xl outline-none transition-colors text-sm"
+                        />
+                      </div>
+                    </div>
                     
                     <div>
-                      <label className="block text-sm text-gray-400 mb-2">Project Summary (Rich Text)</label>
-                      <ReactQuill
-                        theme="snow"
-                        value={projectForm.summary}
-                        onChange={(value) => setProjectForm({...projectForm, summary: value})}
-                        className="bg-white text-black rounded"
-                        modules={{
-                          toolbar: [
-                            ['bold', 'italic', 'underline'],
-                            ['link', 'code-block'],
-                            [{ 'list': 'ordered'}, { 'list': 'bullet' }],
-                            ['clean']
-                          ]
-                        }}
+                      <label className="block text-xs font-semibold text-gray-400 uppercase tracking-wider mb-2 pl-1">Project Live Link / URL</label>
+                      <input
+                        type="url"
+                        placeholder="https://github.com/..."
+                        value={projectForm.url}
+                        onChange={(e) => setProjectForm({...projectForm, url: e.target.value})}
+                        className="w-full bg-white/5 border border-white/10 focus:border-purple-500 text-white px-4 py-3 rounded-2xl outline-none transition-colors text-sm"
                       />
                     </div>
                     
-                    <input
-                      type="text"
-                      placeholder="Tags (comma-separated: react, typescript, api)"
-                      value={projectForm.tags.join(', ')}
-                      onChange={(e) => setProjectForm({...projectForm, tags: e.target.value.split(',').map(t => t.trim()).filter(Boolean)})}
-                      className="w-full px-3 py-2 bg-gray-700 rounded border border-gray-600 focus:border-blue-500 outline-none"
-                    />
+                    <div>
+                      <label className="block text-xs font-semibold text-gray-400 uppercase tracking-wider mb-2 pl-1">Project Description (Rich HTML Summary)</label>
+                      <div className="bg-white text-black rounded-2xl overflow-hidden border border-white/10">
+                        <ReactQuill
+                          theme="snow"
+                          value={projectForm.summary}
+                          onChange={(value) => setProjectForm({...projectForm, summary: value})}
+                          className="text-black"
+                          modules={{
+                            toolbar: [
+                              ['bold', 'italic', 'underline'],
+                              ['link', 'code-block'],
+                              [{ 'list': 'ordered'}, { 'list': 'bullet' }],
+                              ['clean']
+                            ]
+                          }}
+                        />
+                      </div>
+                    </div>
                     
-                    <div className="flex gap-6">
-                      <label className="flex items-center cursor-pointer">
+                    <div>
+                      <label className="block text-xs font-semibold text-gray-400 uppercase tracking-wider mb-2 pl-1">Tags (Comma Separated)</label>
+                      <input
+                        type="text"
+                        placeholder="react, tailwindcss, nextjs"
+                        value={projectForm.tags.join(', ')}
+                        onChange={(e) => setProjectForm({...projectForm, tags: e.target.value.split(',').map(t => t.trim()).filter(Boolean)})}
+                        className="w-full bg-white/5 border border-white/10 focus:border-purple-500 text-white px-4 py-3 rounded-2xl outline-none transition-colors text-sm"
+                      />
+                    </div>
+                    
+                    <div className="flex gap-6 p-1 bg-white/5 rounded-2xl border border-white/5 justify-around py-3">
+                      <label className="flex items-center cursor-pointer gap-2 hover:opacity-80 transition-opacity">
                         <input
                           type="checkbox"
                           checked={projectForm.visible}
                           onChange={(e) => setProjectForm({...projectForm, visible: e.target.checked})}
-                          className="mr-2 w-4 h-4"
+                          className="w-4.5 h-4.5 accent-purple-600 rounded cursor-pointer"
                         />
-                        <span>👁️ Visible on Portfolio</span>
+                        <span className="text-sm text-gray-300 font-semibold flex items-center gap-1"><Eye size={14} /> Visible</span>
                       </label>
-                      <label className="flex items-center cursor-pointer">
+                      <label className="flex items-center cursor-pointer gap-2 hover:opacity-80 transition-opacity">
                         <input
                           type="checkbox"
                           checked={projectForm.featured}
                           onChange={(e) => setProjectForm({...projectForm, featured: e.target.checked})}
-                          className="mr-2 w-4 h-4"
+                          className="w-4.5 h-4.5 accent-purple-600 rounded cursor-pointer"
                         />
-                        <span>⭐ Featured Project</span>
+                        <span className="text-sm text-gray-300 font-semibold flex items-center gap-1">⭐ Feature Spotlight</span>
                       </label>
                     </div>
                   </div>
                   
-                  <div className="flex gap-2 mt-4">
-                    <button type="submit" className="px-6 py-2 bg-blue-600 hover:bg-blue-700 rounded transition-colors">
-                      {selectedProject ? '💾 Update' : '➕ Create'} Project
+                  <div className="flex gap-2 pt-2">
+                    <button type="submit" className="flex-1 py-3 bg-purple-600 hover:bg-purple-500 text-white font-bold rounded-2xl shadow-lg shadow-purple-500/20 hover:shadow-purple-500/30 transition-all text-sm">
+                      {selectedProject ? 'Save Changes' : 'Register Project'}
                     </button>
                     {selectedProject && (
                       <button
                         type="button"
                         onClick={resetProjectForm}
-                        className="px-6 py-2 bg-gray-700 hover:bg-gray-600 rounded transition-colors"
+                        className="px-6 py-3 bg-white/5 hover:bg-white/10 border border-white/10 text-gray-300 hover:text-white font-semibold rounded-2xl transition-all text-sm"
                       >
-                        ✖️ Cancel
+                        Cancel
                       </button>
                     )}
                   </div>
                 </form>
                 
-                {/* Projects List */}
+                {/* Projects Grid List */}
                 <div className="space-y-3">
-                  <h3 className="text-lg font-bold mb-3">All Projects ({projects.length})</h3>
-                  {projects.map((project) => (
-                    <div key={project.id} className="p-4 bg-gray-800 rounded-lg border border-gray-700 hover:border-gray-600 transition-colors">
-                      <div className="flex justify-between items-start">
-                        <div className="flex-1">
-                          <h4 className="font-bold text-lg">{project.name}</h4>
-                          <p className="text-sm text-gray-400 mt-1">
-                            {project.language} • {project.stars} ⭐ • {project.forks} 🍴
-                          </p>
-                          <div className="flex gap-2 mt-2">
-                            {project.featured && <span className="text-xs bg-yellow-600 px-2 py-1 rounded">⭐ Featured</span>}
-                            {project.visible && <span className="text-xs bg-green-600 px-2 py-1 rounded">👁️ Visible</span>}
-                            {!project.visible && <span className="text-xs bg-gray-600 px-2 py-1 rounded">🔒 Hidden</span>}
+                  <h3 className="text-lg font-bold flex items-center gap-2">
+                    <span>Registered Catalog</span>
+                    <span className="px-2 py-0.5 bg-white/10 rounded-full text-xs text-gray-400">{projects.length}</span>
+                  </h3>
+                  <div className="grid grid-cols-1 gap-3">
+                    {projects.map((project) => (
+                      <div 
+                        key={project.id} 
+                        className="p-4 bg-white/5 border border-white/5 hover:border-purple-500/30 rounded-2xl shadow-md transition-all flex justify-between items-center"
+                      >
+                        <div className="flex-1 min-w-0 pr-4">
+                          <h4 className="font-bold text-white truncate text-base">{project.name}</h4>
+                          <div className="flex items-center gap-2 mt-1.5 flex-wrap">
+                            {project.language && (
+                              <span className="text-[10px] px-2 py-0.5 bg-purple-500/10 border border-purple-500/20 rounded-full text-purple-300 font-medium">
+                                {project.language}
+                              </span>
+                            )}
+                            <span className="text-[10px] text-gray-500 font-semibold">{project.stars} Stars</span>
+                            {project.featured && (
+                              <span className="text-[10px] px-2 py-0.5 bg-yellow-500/10 border border-yellow-500/20 text-yellow-300 rounded-full font-bold">
+                                Spotlight
+                              </span>
+                            )}
+                            {project.visible ? (
+                              <span className="text-[10px] px-2 py-0.5 bg-green-500/10 border border-green-500/20 text-green-300 rounded-full font-bold">
+                                Visible
+                              </span>
+                            ) : (
+                              <span className="text-[10px] px-2 py-0.5 bg-gray-800 text-gray-400 border border-gray-700 rounded-full font-bold">
+                                Hidden
+                              </span>
+                            )}
                           </div>
                         </div>
                         <div className="flex gap-2">
                           <button
                             onClick={() => editProject(project)}
-                            className="px-3 py-1 bg-blue-600 hover:bg-blue-700 rounded text-sm transition-colors"
+                            className="p-2.5 bg-purple-500/10 hover:bg-purple-500/20 border border-purple-500/20 text-purple-300 rounded-xl transition-all"
                           >
-                            ✏️ Edit
+                            <Edit3 size={15} />
                           </button>
                           <button
                             onClick={() => handleProjectDelete(project.id)}
-                            className="px-3 py-1 bg-red-600 hover:bg-red-700 rounded text-sm transition-colors"
+                            className="p-2.5 bg-red-500/10 hover:bg-red-500/20 border border-red-500/20 text-red-400 rounded-xl transition-all"
                           >
-                            🗑️ Delete
+                            <Trash2 size={15} />
                           </button>
                         </div>
                       </div>
-                    </div>
-                  ))}
+                    ))}
+                  </div>
                 </div>
               </div>
             )}
             
-            {/* Timeline Tab */}
+            {/* Tab: Timeline */}
             {activeTab === 'timeline' && (
-              <div>
-                <div className="flex justify-between items-center mb-4">
-                  <h2 className="text-2xl font-bold">Timeline Management</h2>
+              <div className="space-y-6">
+                <div className="flex justify-between items-center">
+                  <div>
+                    <h2 className="text-2xl font-black">Timeline Events</h2>
+                    <p className="text-xs text-gray-400 mt-1">Manage experiences, certifications, and educational accomplishments</p>
+                  </div>
                   <button
                     onClick={handleGenerateTimeline}
                     disabled={generating}
-                    className="px-4 py-2 bg-purple-600 hover:bg-purple-700 rounded disabled:opacity-50 transition-colors"
+                    className="px-5 py-2.5 bg-purple-600 hover:bg-purple-500 disabled:bg-gray-800 disabled:text-gray-500 text-white rounded-xl text-sm font-bold shadow-lg shadow-purple-500/10 hover:shadow-purple-500/20 transition-all flex items-center gap-2"
                   >
-                    {generating ? '⏳ Generating...' : '🤖 AI Generate from GitHub'}
+                    <Sparkles size={14} className={generating ? 'animate-spin' : ''} />
+                    <span>{generating ? 'Processing...' : 'AI Generate'}</span>
                   </button>
                 </div>
+
                 {syncMessage && (
-                  <div className="mb-4 p-3 bg-gray-800 rounded border border-gray-700">{syncMessage}</div>
+                  <div className="p-4 bg-purple-950/20 border border-purple-500/20 rounded-2xl text-purple-300 text-sm flex items-center gap-2">
+                    <Sparkles size={16} className="shrink-0" />
+                    <span>{syncMessage}</span>
+                  </div>
                 )}
                 
                 {/* Timeline Event Form */}
-                <form onSubmit={handleTimelineSave} className="mb-6 p-6 bg-gray-800 rounded-lg border border-gray-700">
-                  <h3 className="text-lg font-bold mb-4">
-                    {selectedEvent ? '✏️ Edit Event' : '➕ Add Timeline Event'}
+                <form onSubmit={handleTimelineSave} className="p-6 bg-white/5 border border-white/10 rounded-3xl shadow-xl space-y-4">
+                  <h3 className="text-lg font-bold flex items-center gap-2 text-purple-300">
+                    <Plus size={18} />
+                    <span>{selectedEvent ? 'Modify Timeline Event' : 'Create Timeline Event'}</span>
                   </h3>
                   
-                  <div className="space-y-3">
-                    <input
-                      type="text"
-                      placeholder="Title (e.g., Senior Software Engineer) *"
-                      value={eventForm.title}
-                      onChange={(e) => setEventForm({...eventForm, title: e.target.value})}
-                      className="w-full px-3 py-2 bg-gray-700 rounded border border-gray-600 focus:border-blue-500 outline-none"
-                      required
-                    />
+                  <div className="space-y-4">
+                    <div className="grid grid-cols-2 gap-4">
+                      <div>
+                        <label className="block text-xs font-semibold text-gray-400 uppercase tracking-wider mb-2 pl-1">Event Title *</label>
+                        <input
+                          type="text"
+                          placeholder="e.g. Senior Software Engineer"
+                          value={eventForm.title}
+                          onChange={(e) => setEventForm({...eventForm, title: e.target.value})}
+                          className="w-full bg-white/5 border border-white/10 focus:border-purple-500 text-white px-4 py-3 rounded-2xl outline-none transition-colors text-sm"
+                          required
+                        />
+                      </div>
+                      <div>
+                        <label className="block text-xs font-semibold text-gray-400 uppercase tracking-wider mb-2 pl-1">Subtitle / Institution</label>
+                        <input
+                          type="text"
+                          placeholder="e.g. Oracle Corp, KIIT University"
+                          value={eventForm.subtitle}
+                          onChange={(e) => setEventForm({...eventForm, subtitle: e.target.value})}
+                          className="w-full bg-white/5 border border-white/10 focus:border-purple-500 text-white px-4 py-3 rounded-2xl outline-none transition-colors text-sm"
+                        />
+                      </div>
+                    </div>
                     
-                    <input
-                      type="text"
-                      placeholder="Subtitle (e.g., Company Name / University)"
-                      value={eventForm.subtitle}
-                      onChange={(e) => setEventForm({...eventForm, subtitle: e.target.value})}
-                      className="w-full px-3 py-2 bg-gray-700 rounded border border-gray-600 focus:border-blue-500 outline-none"
-                    />
+                    <div className="grid grid-cols-2 gap-4">
+                      <div>
+                        <label className="block text-xs font-semibold text-gray-400 uppercase tracking-wider mb-2 pl-1">Date Range *</label>
+                        <input
+                          type="text"
+                          placeholder="e.g. 2022 - Present, Jul 2021"
+                          value={eventForm.dateRange}
+                          onChange={(e) => setEventForm({...eventForm, dateRange: e.target.value})}
+                          className="w-full bg-white/5 border border-white/10 focus:border-purple-500 text-white px-4 py-3 rounded-2xl outline-none transition-colors text-sm"
+                          required
+                        />
+                      </div>
+                      <div>
+                        <label className="block text-xs font-semibold text-gray-400 uppercase tracking-wider mb-2 pl-1">Category</label>
+                        <select
+                          value={eventForm.category}
+                          onChange={(e) => setEventForm({...eventForm, category: e.target.value})}
+                          className="w-full bg-gray-900 border border-white/10 focus:border-purple-500 text-white px-4 py-3 rounded-2xl outline-none transition-colors text-sm cursor-pointer"
+                        >
+                          <option value="experience">💼 Professional Experience</option>
+                          <option value="education">🎓 Academics / Certifications</option>
+                        </select>
+                      </div>
+                    </div>
                     
-                    <input
-                      type="text"
-                      placeholder="Date Range (e.g., 2020 - 2023)"
-                      value={eventForm.dateRange}
-                      onChange={(e) => setEventForm({...eventForm, dateRange: e.target.value})}
-                      className="w-full px-3 py-2 bg-gray-700 rounded border border-gray-600 focus:border-blue-500 outline-none"
-                    />
+                    <div>
+                      <label className="block text-xs font-semibold text-gray-400 uppercase tracking-wider mb-2 pl-1">Event Description</label>
+                      <textarea
+                        placeholder="Detail key responsibilities, deliverables, and projects completed during this phase."
+                        value={eventForm.description}
+                        onChange={(e) => setEventForm({...eventForm, description: e.target.value})}
+                        className="w-full bg-white/5 border border-white/10 focus:border-purple-500 text-white px-4 py-3.5 rounded-2xl outline-none transition-colors text-sm h-28 resize-none placeholder-gray-600"
+                      />
+                    </div>
                     
-                    <textarea
-                      placeholder="Description / Achievements"
-                      value={eventForm.description}
-                      onChange={(e) => setEventForm({...eventForm, description: e.target.value})}
-                      className="w-full px-3 py-2 bg-gray-700 rounded border border-gray-600 focus:border-blue-500 outline-none h-24"
-                    />
-                    
-                    <select
-                      value={eventForm.category}
-                      onChange={(e) => setEventForm({...eventForm, category: e.target.value})}
-                      className="w-full px-3 py-2 bg-gray-700 rounded border border-gray-600 focus:border-blue-500 outline-none"
-                    >
-                      <option value="experience">💼 Experience</option>
-                      <option value="education">🎓 Education</option>
-                    </select>
-                    
-                    <input
-                      type="number"
-                      placeholder="Order Index (0 = first)"
-                      value={eventForm.orderIndex}
-                      onChange={(e) => setEventForm({...eventForm, orderIndex: parseInt(e.target.value) || 0})}
-                      className="w-full px-3 py-2 bg-gray-700 rounded border border-gray-600 focus:border-blue-500 outline-none"
-                    />
+                    <div>
+                      <label className="block text-xs font-semibold text-gray-400 uppercase tracking-wider mb-2 pl-1">Order Index (Sort Weight)</label>
+                      <input
+                        type="number"
+                        placeholder="0"
+                        value={eventForm.orderIndex}
+                        onChange={(e) => setEventForm({...eventForm, orderIndex: parseInt(e.target.value) || 0})}
+                        className="w-24 bg-white/5 border border-white/10 focus:border-purple-500 text-white px-4 py-3 rounded-2xl outline-none transition-colors text-sm"
+                      />
+                    </div>
                   </div>
                   
-                  <div className="flex gap-2 mt-4">
-                    <button type="submit" className="px-6 py-2 bg-blue-600 hover:bg-blue-700 rounded transition-colors">
-                      {selectedEvent ? '💾 Update' : '➕ Create'} Event
+                  <div className="flex gap-2 pt-2">
+                    <button type="submit" className="flex-1 py-3 bg-purple-600 hover:bg-purple-500 text-white font-bold rounded-2xl shadow-lg shadow-purple-500/20 hover:shadow-purple-500/30 transition-all text-sm">
+                      {selectedEvent ? 'Save Event' : 'Add Event'}
                     </button>
                     {selectedEvent && (
                       <button
                         type="button"
                         onClick={resetEventForm}
-                        className="px-6 py-2 bg-gray-700 hover:bg-gray-600 rounded transition-colors"
+                        className="px-6 py-3 bg-white/5 hover:bg-white/10 border border-white/10 text-gray-300 hover:text-white font-semibold rounded-2xl transition-all text-sm"
                       >
-                        ✖️ Cancel
+                        Cancel
                       </button>
                     )}
                   </div>
                 </form>
                 
-                {/* Timeline Events List with Drag-and-Drop */}
+                {/* Drag and drop reordering list */}
                 <div>
-                  <h3 className="text-lg font-bold mb-3">Timeline Events (Drag to Reorder)</h3>
+                  <h3 className="text-lg font-bold mb-3">Organized Timeline (Drag to Re-arrange)</h3>
                   <DragDropContext onDragEnd={handleTimelineDragEnd}>
                     <Droppable droppableId="timeline-events">
                       {(provided) => (
@@ -704,34 +835,32 @@ export default function AdminPage() {
                                   ref={provided.innerRef}
                                   {...provided.draggableProps}
                                   {...provided.dragHandleProps}
-                                  className={`p-4 bg-gray-800 rounded-lg border border-gray-700 hover:border-gray-600 transition-colors ${
-                                    snapshot.isDragging ? 'opacity-70 shadow-lg' : ''
+                                  className={`p-4 bg-white/5 border border-white/5 rounded-2xl hover:border-purple-500/30 flex items-start gap-4 transition-all ${
+                                    snapshot.isDragging ? 'bg-purple-950/20 shadow-xl opacity-80 border-purple-500/40' : ''
                                   }`}
                                 >
-                                  <div className="flex items-start gap-3">
-                                    <span className="text-2xl cursor-grab">☰</span>
-                                    <div className="flex-1">
-                                      <div className="flex items-center gap-2">
-                                        <span className="text-xl">{event.category === 'education' ? '🎓' : '💼'}</span>
-                                        <h4 className="font-bold">{event.title}</h4>
-                                      </div>
-                                      <p className="text-sm text-gray-400 mt-1">{event.subtitle}</p>
-                                      <p className="text-xs text-gray-500 mt-1">{event.dateRange}</p>
+                                  <span className="text-2xl text-gray-600 cursor-grab select-none pt-1">☰</span>
+                                  <div className="flex-1 min-w-0">
+                                    <div className="flex items-center gap-2">
+                                      <span className="text-base">{event.category === 'education' ? '🎓' : '💼'}</span>
+                                      <h4 className="font-bold text-white truncate text-base">{event.title}</h4>
                                     </div>
-                                    <div className="flex gap-2">
-                                      <button
-                                        onClick={() => editEvent(event)}
-                                        className="px-3 py-1 bg-blue-600 hover:bg-blue-700 rounded text-sm transition-colors"
-                                      >
-                                        ✏️
-                                      </button>
-                                      <button
-                                        onClick={() => handleEventDelete(event.id)}
-                                        className="px-3 py-1 bg-red-600 hover:bg-red-700 rounded text-sm transition-colors"
-                                      >
-                                        🗑️
-                                      </button>
-                                    </div>
+                                    <p className="text-xs text-gray-400 mt-1">{event.subtitle}</p>
+                                    <p className="text-[10px] text-gray-500 font-semibold mt-0.5">{event.dateRange}</p>
+                                  </div>
+                                  <div className="flex gap-2">
+                                    <button
+                                      onClick={() => editEvent(event)}
+                                      className="p-2 bg-purple-500/10 hover:bg-purple-500/20 border border-purple-500/20 text-purple-300 rounded-lg transition-all"
+                                    >
+                                      <Edit3 size={14} />
+                                    </button>
+                                    <button
+                                      onClick={() => handleEventDelete(event.id)}
+                                      className="p-2 bg-red-500/10 hover:bg-red-500/20 border border-red-500/20 text-red-400 rounded-lg transition-all"
+                                    >
+                                      <Trash2 size={14} />
+                                    </button>
                                   </div>
                                 </div>
                               )}
@@ -746,11 +875,13 @@ export default function AdminPage() {
               </div>
             )}
             
-            {/* Layout Tab */}
+            {/* Tab: Layout */}
             {activeTab === 'layout' && (
-              <div>
-                <h2 className="text-2xl font-bold mb-4">Page Layout Order</h2>
-                <p className="text-gray-400 mb-6">Drag sections to reorder them on your homepage</p>
+              <div className="space-y-6">
+                <div>
+                  <h2 className="text-2xl font-black">Landing Page Blueprint</h2>
+                  <p className="text-xs text-gray-400 mt-1">Re-arrange modules to adjust homepage flow</p>
+                </div>
                 
                 <DragDropContext onDragEnd={handleDragEnd}>
                   <Droppable droppableId="sections">
@@ -763,15 +894,17 @@ export default function AdminPage() {
                                 ref={provided.innerRef}
                                 {...provided.draggableProps}
                                 {...provided.dragHandleProps}
-                                className={`p-5 bg-gray-800 rounded-lg border border-gray-700 flex items-center gap-4 ${
-                                  snapshot.isDragging ? 'opacity-70 shadow-lg' : 'hover:border-gray-600'
+                                className={`p-5 bg-white/5 border border-white/5 rounded-2xl flex items-center justify-between transition-all ${
+                                  snapshot.isDragging ? 'bg-purple-950/20 shadow-xl opacity-80 border-purple-500/40' : 'hover:border-white/10'
                                 }`}
                               >
-                                <span className="text-3xl cursor-grab">☰</span>
-                                <div className="flex-1">
-                                  <span className="text-lg capitalize font-medium">{section}</span>
+                                <div className="flex items-center gap-4">
+                                  <span className="text-2xl text-gray-600 cursor-grab select-none">☰</span>
+                                  <span className="text-lg capitalize font-bold text-gray-200">{section}</span>
                                 </div>
-                                <span className="text-gray-500 font-mono">#{index + 1}</span>
+                                <span className="text-[11px] font-mono bg-white/10 text-gray-400 px-3 py-1 rounded-full uppercase tracking-wider font-semibold">
+                                  Order #{index + 1}
+                                </span>
                               </div>
                             )}
                           </Draggable>
@@ -784,60 +917,186 @@ export default function AdminPage() {
               </div>
             )}
             
-            {/* Settings Tab */}
+            {/* Tab: Settings */}
             {activeTab === 'settings' && (
-              <div>
-                <h2 className="text-2xl font-bold mb-6">Portfolio Settings</h2>
-                
-                {/* Resume Upload */}
-                <div className="mb-6 p-6 bg-gray-800 rounded-lg border border-gray-700">
-                  <h3 className="text-lg font-bold mb-4">📄 Resume / CV</h3>
-                  {config?.resumeUrl && (
-                    <div className="mb-4 p-3 bg-gray-700 rounded">
-                      <a href={config.resumeUrl} target="_blank" className="text-blue-400 hover:text-blue-300 transition-colors">
-                        📎 Current Resume: {config.resumeUrl}
-                      </a>
-                    </div>
-                  )}
-                  <input
-                    type="file"
-                    accept=".pdf,.doc,.docx"
-                    onChange={handleResumeUpload}
-                    className="w-full px-3 py-2 bg-gray-700 rounded border border-gray-600 file:mr-4 file:py-2 file:px-4 file:rounded file:border-0 file:bg-blue-600 file:text-white hover:file:bg-blue-700"
-                  />
-                  <p className="text-sm text-gray-400 mt-2">Upload PDF, DOC, or DOCX (max 10MB)</p>
+              <div className="space-y-8 animate-fade-in">
+                <div>
+                  <h2 className="text-2xl font-black">Portfolio Settings</h2>
+                  <p className="text-xs text-gray-400 mt-1">Configure user uploads, active theme, and database AI settings</p>
                 </div>
                 
-                {/* Theme Settings */}
-                <div className="p-6 bg-gray-800 rounded-lg border border-gray-700">
-                  <h3 className="text-lg font-bold mb-4">🎨 Theme</h3>
+                {/* Media & Uploads */}
+                <div className="p-6 bg-white/5 border border-white/10 rounded-3xl space-y-6 shadow-xl">
+                  <h3 className="text-lg font-bold flex items-center gap-2 text-purple-300">
+                    <Upload size={18} />
+                    <span>Uploads & Media</span>
+                  </h3>
+
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                    {/* Avatar Upload */}
+                    <div className="space-y-4">
+                      <label className="block text-xs font-semibold text-gray-400 uppercase tracking-wider mb-2 pl-1">
+                        Profile Avatar / Photo
+                      </label>
+                      <div className="flex items-center gap-4 bg-white/5 p-4 rounded-2xl border border-white/5">
+                        <div className="w-16 h-16 rounded-full border-2 border-purple-500/30 overflow-hidden flex-shrink-0 bg-black/40 flex items-center justify-center">
+                          {config?.userImage ? (
+                            <img src={config.userImage} alt="Avatar Preview" className="w-full h-full object-cover" />
+                          ) : (
+                            <Image size={24} className="text-purple-400" />
+                          )}
+                        </div>
+                        <div className="flex-1">
+                          <input
+                            type="file"
+                            accept="image/*"
+                            onChange={handleAvatarUpload}
+                            className="hidden"
+                            id="avatar-upload-input"
+                          />
+                          <label
+                            htmlFor="avatar-upload-input"
+                            className="inline-block px-4 py-2 bg-purple-600 hover:bg-purple-500 text-white rounded-xl text-xs font-bold shadow-md shadow-purple-500/10 cursor-pointer transition-all"
+                          >
+                            Upload Image
+                          </label>
+                          <p className="text-[10px] text-gray-500 mt-1.5 leading-relaxed">PNG, JPG, or WEBP up to 5MB</p>
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* Resume Upload */}
+                    <div className="space-y-4">
+                      <label className="block text-xs font-semibold text-gray-400 uppercase tracking-wider mb-2 pl-1">
+                        Resume / CV File
+                      </label>
+                      <div className="flex items-center gap-4 bg-white/5 p-4 rounded-2xl border border-white/5">
+                        <div className="w-16 h-16 rounded-full border-2 border-purple-500/30 overflow-hidden flex-shrink-0 bg-black/40 flex items-center justify-center">
+                          <FileText size={24} className="text-purple-400" />
+                        </div>
+                        <div className="flex-1">
+                          <input
+                            type="file"
+                            accept=".pdf,.doc,.docx"
+                            onChange={handleResumeUpload}
+                            className="hidden"
+                            id="resume-upload-input"
+                          />
+                          <label
+                            htmlFor="resume-upload-input"
+                            className="inline-block px-4 py-2 bg-purple-600 hover:bg-purple-500 text-white rounded-xl text-xs font-bold shadow-md shadow-purple-500/10 cursor-pointer transition-all"
+                          >
+                            Upload CV
+                          </label>
+                          {config?.resumeUrl ? (
+                            <p className="text-[10px] text-green-400 mt-1.5 truncate max-w-[150px]">
+                              📎 Active: {config.resumeUrl.substring(config.resumeUrl.lastIndexOf('/') + 1)}
+                            </p>
+                          ) : (
+                            <p className="text-[10px] text-gray-500 mt-1.5 leading-relaxed">PDF, DOCX up to 10MB</p>
+                          )}
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
+                {/* AI Configuration Section */}
+                <form onSubmit={handleAISettingsSave} className="p-6 bg-white/5 border border-white/10 rounded-3xl space-y-4 shadow-xl">
+                  <h3 className="text-lg font-bold flex items-center gap-2 text-purple-300">
+                    <Sparkles size={18} />
+                    <span>Dynamic AI Configuration (CMS)</span>
+                  </h3>
+                  
                   <div className="space-y-4">
-                    <div className="flex items-center gap-4">
-                      <label className="text-gray-400">Select Theme:</label>
+                    <div>
+                      <label className="block text-xs font-semibold text-gray-400 uppercase tracking-wider mb-2 pl-1">Gemini Method Type</label>
                       <select
-                        value={config?.theme || 'dark'}
-                        onChange={async (e) => {
-                          try {
-                            const res = await fetch('/api/config', {
-                              method: 'PUT',
-                              headers: { 'Content-Type': 'application/json' },
-                              body: JSON.stringify({ theme: e.target.value })
-                            });
-                            if (res.ok) {
-                              await loadConfig();
-                              alert('Theme updated!');
-                            }
-                          } catch (err) {
-                            alert('Failed to update theme');
-                          }
-                        }}
-                        className="px-4 py-2 bg-gray-700 border border-gray-600 rounded text-white"
+                        value={aiMethod}
+                        onChange={(e) => setAiMethod(e.target.value)}
+                        className="w-full bg-gray-900 border border-white/10 focus:border-purple-500 text-white px-4 py-3 rounded-2xl outline-none transition-colors text-sm cursor-pointer"
                       >
-                        <option value="dark">Dark</option>
-                        <option value="light">Light</option>
-                        <option value="system">System</option>
+                        <option value="official">🌐 Official Google Gemini API Endpoint</option>
+                        <option value="proxy">⚡ OpenAI-compatible Gateway / Proxy Endpoint</option>
                       </select>
                     </div>
+
+                    {aiMethod === 'official' ? (
+                      <div>
+                        <label className="block text-xs font-semibold text-gray-400 uppercase tracking-wider mb-2 pl-1">Official Gemini API Key</label>
+                        <input
+                          type="password"
+                          placeholder="AIzaSy..."
+                          value={geminiApiKey}
+                          onChange={(e) => setGeminiApiKey(e.target.value)}
+                          className="w-full bg-white/5 border border-white/10 focus:border-purple-500 text-white px-4 py-3.5 rounded-2xl outline-none transition-colors text-sm font-mono placeholder-gray-600"
+                        />
+                        <p className="text-[10px] text-gray-500 mt-1.5">Direct official credentials to call Google Generative Language services.</p>
+                      </div>
+                    ) : (
+                      <div className="space-y-4">
+                        <div>
+                          <label className="block text-xs font-semibold text-gray-400 uppercase tracking-wider mb-2 pl-1">Proxy Gateway Base URL</label>
+                          <input
+                            type="text"
+                            placeholder="https://gemini.yourdomain.xyz/v1/chat/completions"
+                            value={geminiProxyUrl}
+                            onChange={(e) => setGeminiProxyUrl(e.target.value)}
+                            className="w-full bg-white/5 border border-white/10 focus:border-purple-500 text-white px-4 py-3.5 rounded-2xl outline-none transition-colors text-sm font-mono placeholder-gray-600"
+                          />
+                          <p className="text-[10px] text-gray-500 mt-1.5">Proxy server base path or endpoints mapping directly to Gemini LLMs.</p>
+                        </div>
+                        <div>
+                          <label className="block text-xs font-semibold text-gray-400 uppercase tracking-wider mb-2 pl-1">Proxy Authorization Token / Key</label>
+                          <input
+                            type="password"
+                            placeholder="sk-..."
+                            value={geminiProxyKey}
+                            onChange={(e) => setGeminiProxyKey(e.target.value)}
+                            className="w-full bg-white/5 border border-white/10 focus:border-purple-500 text-white px-4 py-3.5 rounded-2xl outline-none transition-colors text-sm font-mono placeholder-gray-600"
+                          />
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                  
+                  <button type="submit" className="w-full py-3 bg-purple-600 hover:bg-purple-500 text-white font-bold rounded-2xl shadow-lg shadow-purple-500/20 hover:shadow-purple-500/30 transition-all text-sm flex items-center justify-center gap-1.5">
+                    <Check size={16} />
+                    <span>Apply AI Settings</span>
+                  </button>
+                </form>
+                
+                {/* Theme Settings */}
+                <div className="p-6 bg-white/5 border border-white/10 rounded-3xl space-y-4 shadow-xl">
+                  <h3 className="text-lg font-bold flex items-center gap-2 text-purple-300">
+                    <Globe size={18} />
+                    <span>Theme Customization</span>
+                  </h3>
+                  <div className="flex items-center gap-4 justify-between bg-white/5 p-4 rounded-2xl border border-white/5">
+                    <span className="text-sm text-gray-300 font-semibold">Application Theme</span>
+                    <select
+                      value={config?.theme || 'dark'}
+                      onChange={async (e) => {
+                        try {
+                          const res = await fetch('/api/config', {
+                            method: 'PUT',
+                            headers: { 'Content-Type': 'application/json' },
+                            body: JSON.stringify({ theme: e.target.value })
+                          });
+                          if (res.ok) {
+                            await loadConfig();
+                            alert('Theme updated successfully!');
+                          }
+                        } catch (err) {
+                          alert('Failed to update theme');
+                        }
+                      }}
+                      className="px-4 py-2.5 bg-gray-900 border border-white/10 rounded-xl text-white text-sm outline-none cursor-pointer"
+                    >
+                      <option value="dark">Dark Theme</option>
+                      <option value="light">Light Theme</option>
+                      <option value="system">Follow System</option>
+                    </select>
                   </div>
                 </div>
               </div>
@@ -845,28 +1104,30 @@ export default function AdminPage() {
           </div>
         </div>
         
-        {/* Right Panel - Live Preview */}
-        <div className="w-1/2 bg-gray-950">
-          <div className="h-full flex flex-col">
-            <div className="p-4 bg-gray-800 border-b border-gray-700 flex items-center justify-between">
-              <span className="text-sm text-gray-400">📺 Live Preview</span>
-              <button
-                onClick={() => {
-                  const iframe = document.getElementById('preview-iframe');
-                  if (iframe) iframe.src = iframe.src;
-                }}
-                className="px-4 py-2 bg-gray-700 hover:bg-gray-600 rounded text-sm transition-colors"
-              >
-                🔄 Refresh Preview
-              </button>
+        {/* Right Panel - Live Preview Frame */}
+        <div className="w-1/2 bg-gray-950 flex flex-col">
+          <div className="p-4 bg-gray-950 border-b border-white/10 flex items-center justify-between">
+            <div className="flex items-center gap-2">
+              <div className="w-2 h-2 rounded-full bg-green-500 animate-pulse" />
+              <span className="text-xs font-bold uppercase tracking-wider text-gray-400">Live Preview</span>
             </div>
-            <iframe
-              id="preview-iframe"
-              src="http://localhost:3000"
-              className="flex-1 w-full border-0"
-              title="Portfolio Live Preview"
-            />
+            <button
+              onClick={() => {
+                const iframe = document.getElementById('preview-iframe');
+                if (iframe) iframe.src = iframe.src;
+              }}
+              className="p-2 bg-white/5 hover:bg-white/10 border border-white/10 rounded-xl text-gray-400 hover:text-white transition-all flex items-center gap-1 text-xs"
+            >
+              <RefreshCw size={12} />
+              <span>Refresh Frame</span>
+            </button>
           </div>
+          <iframe
+            id="preview-iframe"
+            src="/"
+            className="flex-1 w-full bg-black border-0"
+            title="Portfolio Live Preview"
+          />
         </div>
       </div>
     </div>

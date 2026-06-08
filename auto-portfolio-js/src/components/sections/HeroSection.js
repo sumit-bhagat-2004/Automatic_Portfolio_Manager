@@ -1,13 +1,14 @@
-'use client';
-
 import { motion } from 'framer-motion';
-import { Mail, Github, ArrowDown } from 'lucide-react';
+import { Mail, Github, ArrowDown, Download } from 'lucide-react';
 import { TypeAnimation } from 'react-type-animation';
 import { Button } from '@/components/ui/Button';
 
-export default function HeroSection() {
+export default function HeroSection({ config }) {
   const githubUsername = process.env.NEXT_PUBLIC_GITHUB_USERNAME || 'sumit-bhagat-2004';
   const emailAddress = 'sumitbhagat011@gmail.com';
+  
+  // Use uploaded profile picture, fallback to default photo
+  const avatarUrl = config?.userImage || '/photo_2025-06-13_23-09-39(1).jpg';
   
   return (
     <section id="hero" className="relative min-h-screen w-full flex flex-col justify-center items-center text-center px-4">
@@ -22,9 +23,9 @@ export default function HeroSection() {
         >
           <div className="absolute inset-0 bg-gradient-to-r from-purple-500 via-pink-500 to-blue-500 rounded-full blur-2xl opacity-50 animate-pulse-glow" />
           <img
-            src="https://raw.githubusercontent.com/sumit-bhagat-2004/Automatic_Portfolio_Manager/main/auto-portfolio-js/public/photo_2025-06-13_23-09-39(1).jpg"
+            src={avatarUrl}
             alt="Sumit Bhagat"
-            className="relative w-28 h-28 sm:w-36 sm:h-36 md:w-44 md:h-44 rounded-full border-4 border-purple-500/50 shadow-2xl shadow-purple-500/50 ring-4 ring-purple-500/20 ring-offset-4 ring-offset-black"
+            className="relative w-28 h-28 sm:w-36 sm:h-36 md:w-44 md:h-44 rounded-full border-4 border-purple-500/50 shadow-2xl shadow-purple-500/50 ring-4 ring-purple-500/20 ring-offset-4 ring-offset-black object-cover"
           />
         </motion.div>
 
@@ -61,8 +62,18 @@ export default function HeroSection() {
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
           transition={{ delay: 0.5 }}
-          className="flex gap-4 justify-center flex-wrap"
+          className="flex gap-4 justify-center flex-wrap items-center"
         >
+          {config?.resumeUrl && (
+            <Button
+              size="lg"
+              variant="outline"
+              className="border-purple-500/50 hover:bg-purple-500/10 text-purple-200"
+              onClick={() => window.open(config.resumeUrl, '_blank')}
+            >
+              <Download className="mr-2 h-5 w-5" /> Download Resume
+            </Button>
+          )}
           <Button
             size="lg" 
             className="bg-gradient-to-r from-purple-600 to-blue-600 hover:from-purple-700 hover:to-blue-700"

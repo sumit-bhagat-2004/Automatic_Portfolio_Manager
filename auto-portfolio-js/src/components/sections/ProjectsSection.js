@@ -1,8 +1,6 @@
-'use a client';
-
 import { useEffect, useState } from 'react';
-import { motion } from 'framer-motion';
-import { Star, ExternalLink, Github, Code, TrendingUp } from 'lucide-react';
+import { motion, AnimatePresence } from 'framer-motion';
+import { Star, ExternalLink, Github, Code, TrendingUp, ChevronDown, ChevronUp } from 'lucide-react';
 import { CardContainer, CardBody, CardItem } from '@/components/ui/3d-card';
 import { Spotlight } from '@/components/ui/spotlight';
 import dynamic from 'next/dynamic';
@@ -14,6 +12,7 @@ export default function ProjectsSection() {
   const [featured, setFeatured] = useState([]);
   const [filter, setFilter] = useState('all');
   const [languages, setLanguages] = useState([]);
+  const [showAll, setShowAll] = useState(false);
 
   useEffect(() => {
     fetch('/api/projects?visible=true')
@@ -32,6 +31,8 @@ export default function ProjectsSection() {
   const filteredProjects = filter === 'all' 
     ? projects 
     : projects.filter(p => p.language === filter);
+
+  const shouldShowAll = showAll || featured.length === 0;
 
   return (
     <section id="projects" className="relative min-h-screen py-20 px-4">
@@ -64,53 +65,96 @@ export default function ProjectsSection() {
           </div>
         )}
 
-        {/* All Projects Section */}
-        <motion.div
-          initial={{ opacity: 0, y: 20 }}
-          whileInView={{ opacity: 1, y: 0 }}
-          viewport={{ once: true }}
-          className="mb-12"
-        >
-          <h2 className="text-5xl font-black mb-6 text-center">
-            <span className="bg-gradient-to-r from-blue-400 to-purple-400 bg-clip-text text-transparent">
-              All Projects
-            </span>
-          </h2>
-          
-          {/* Filter Buttons */}
-          <div className="flex flex-wrap gap-2 justify-center mb-8">
-            <button
-              onClick={() => setFilter('all')}
-              className={`px-4 py-2 rounded-full transition-all ${
-                filter === 'all'
-                  ? 'bg-blue-600 text-white'
-                  : 'bg-gray-800 text-gray-300 hover:bg-gray-700'
-              }`}
+        {/* View All Projects Button */}
+        {!shouldShowAll && (
+          <div className="flex justify-center mt-8">
+            <motion.button
+              initial={{ opacity: 0, scale: 0.95 }}
+              animate={{ opacity: 1, scale: 1 }}
+              whileHover={{ scale: 1.05 }}
+              whileTap={{ scale: 0.98 }}
+              onClick={() => setShowAll(true)}
+              className="group relative px-8 py-4 bg-gradient-to-r from-purple-600/20 to-blue-600/20 hover:from-purple-600/30 hover:to-blue-600/30 text-purple-200 hover:text-white border border-purple-500/30 hover:border-purple-500/60 rounded-full font-medium transition-all duration-300 shadow-lg hover:shadow-purple-500/10 backdrop-blur-md flex items-center gap-2"
             >
-              All ({projects.length})
-            </button>
-            {languages.map(lang => (
-              <button
-                key={lang}
-                onClick={() => setFilter(lang)}
-                className={`px-4 py-2 rounded-full transition-all ${
-                  filter === lang
-                    ? 'bg-blue-600 text-white'
-                    : 'bg-gray-800 text-gray-300 hover:bg-gray-700'
-                }`}
-              >
-                {lang}
-              </button>
-            ))}
+              <span>Explore More Projects</span>
+              <ChevronDown size={18} className="group-hover:translate-y-1 transition-transform" />
+            </motion.button>
           </div>
-        </motion.div>
+        )}
 
-        {/* Projects Grid */}
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6"> {/* Reverted to original without scroll classes */}
-          {filteredProjects.map((project, idx) => (
-            <ProjectCard key={project.id} project={project} index={idx} />
-          ))}
-        </div>
+        <AnimatePresence>
+          {shouldShowAll && (
+            <motion.div
+              initial={{ opacity: 0, height: 0 }}
+              animate={{ opacity: 1, height: 'auto' }}
+              exit={{ opacity: 0, height: 0 }}
+              transition={{ duration: 0.5 }}
+              className="overflow-hidden"
+            >
+              {/* All Projects Section */}
+              <motion.div
+                initial={{ opacity: 0, y: 20 }}
+                animate={{ opacity: 1, y: 0 }}
+                className="mb-12 mt-12"
+              >
+                <h2 className="text-5xl font-black mb-6 text-center">
+                  <span className="bg-gradient-to-r from-blue-400 to-purple-400 bg-clip-text text-transparent">
+                    All Projects
+                  </span>
+                </h2>
+                
+                {/* Filter Buttons */}
+                <div className="flex flex-wrap gap-2 justify-center mb-8">
+                  <button
+                    onClick={() => setFilter('all')}
+                    className={`px-4 py-2 rounded-full transition-all ${
+                      filter === 'all'
+                        ? 'bg-blue-600 text-white'
+                        : 'bg-gray-800 text-gray-300 hover:bg-gray-700'
+                    }`}
+                  >
+                    All ({projects.length})
+                  </button>
+                  {languages.map(lang => (
+                    <button
+                      key={lang}
+                      onClick={() => setFilter(lang)}
+                      className={`px-3 py-1.5 rounded-full transition-all text-sm ${
+                        filter === lang
+                          ? 'bg-blue-600 text-white'
+                          : 'bg-gray-800 text-gray-300 hover:bg-gray-700'
+                      }`}
+                    >
+                      {lang}
+                    </button>
+                  ))}
+                </div>
+              </motion.div>
+
+              {/* Projects Grid */}
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                {filteredProjects.map((project, idx) => (
+                  <ProjectCard key={project.id} project={project} index={idx} />
+                ))}
+              </div>
+
+              {/* Collapse Button */}
+              {featured.length > 0 && (
+                <div className="flex justify-center mt-12 mb-8">
+                  <motion.button
+                    whileHover={{ scale: 1.05 }}
+                    whileTap={{ scale: 0.98 }}
+                    onClick={() => setShowAll(false)}
+                    className="group px-6 py-3 bg-gray-900/60 hover:bg-gray-800/80 text-gray-400 hover:text-gray-200 border border-gray-800 rounded-full font-medium transition-all duration-300 flex items-center gap-2"
+                  >
+                    <span>Show Less</span>
+                    <ChevronUp size={16} className="group-hover:-translate-y-0.5 transition-transform" />
+                  </motion.button>
+                </div>
+              )}
+            </motion.div>
+          )}
+        </AnimatePresence>
       </div>
     </section>
   );

@@ -4,11 +4,11 @@ import { cookies } from 'next/headers';
 export async function POST(request) {
   try {
     const { password } = await request.json();
-    const adminPassword = process.env.ADMIN_PASSWORD || 'admin123';
+    const drivePassword = process.env.DRIVE_PASSWORD || process.env.ADMIN_PASSWORD || 'admin123';
     
-    if (password === adminPassword) {
+    if (password === drivePassword) {
       const cookieStore = await cookies();
-      cookieStore.set('admin_authenticated', 'true', {
+      cookieStore.set('drive_authenticated', 'true', {
         httpOnly: true,
         secure: request.url.startsWith('https:'),
         sameSite: 'lax',

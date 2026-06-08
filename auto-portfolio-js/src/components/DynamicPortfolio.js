@@ -12,6 +12,7 @@ const ProjectsSection = dynamic(() => import('./sections/ProjectsSection'), { ss
 const TimelineSection = dynamic(() => import('./sections/TimelineSection'), { ssr: false });
 const BentoSection = dynamic(() => import('./sections/BentoSection'), { ssr: false });
 const ContactSection = dynamic(() => import('./sections/ContactSection'), { ssr: false });
+const Chatbot = dynamic(() => import('./Chatbot'), { ssr: false });
 
 const sectionComponents = {
   hero: HeroSection,
@@ -79,6 +80,8 @@ export default function DynamicPortfolio() {
           </div>
         );
       })}
+      
+      <Chatbot />
     </div>
   );
 }

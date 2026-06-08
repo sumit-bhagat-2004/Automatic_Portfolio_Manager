@@ -229,7 +229,7 @@ function SkillsWidget() {
 
   return (
     <div className="h-full flex flex-col">
-      <h3 className="text-lg font-semibold mb-4">Tech Stack</h3>
+      <h3 className="text-lg font-semibold mb-4">Skills</h3>
       <div className="flex-1 flex flex-wrap gap-2 content-start">
         {skills.map((skill) => (
           <span

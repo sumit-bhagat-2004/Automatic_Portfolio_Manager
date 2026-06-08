@@ -1,14 +1,13 @@
 import { NextResponse } from 'next/server';
+import { cookies } from 'next/headers';
 import { prisma } from '@/lib/prisma';
 
 // GET /api/config - Get configuration
 export async function GET() {
   try {
-    // Get the first (and only) config record
     let config = await prisma.config.findFirst();
 
     if (!config) {
-      // Create default config if it doesn't exist
       config = await prisma.config.create({
         data: {
           theme: 'dark',
@@ -26,10 +25,17 @@ export async function GET() {
       });
     }
 
+    const cookieStore = await cookies();
+    const isAdmin = cookieStore.get('admin_authenticated')?.value === 'true';
+
     return NextResponse.json({
       ...config,
       layoutOrder: JSON.parse(config.layoutOrder),
       bentoData: config.bentoData ? JSON.parse(config.bentoData) : null,
+      // Hide secrets from visitors, return them only to authenticated admin
+      geminiApiKey: isAdmin ? config.geminiApiKey : null,
+      geminiProxyUrl: isAdmin ? config.geminiProxyUrl : null,
+      geminiProxyKey: isAdmin ? config.geminiProxyKey : null,
     });
   } catch (error) {
     console.error('Error fetching config:', error);
@@ -43,33 +49,56 @@ export async function GET() {
 // PUT /api/config - Update configuration
 export async function PUT(request) {
   try {
+    const cookieStore = await cookies();
+    const isAdmin = cookieStore.get('admin_authenticated')?.value === 'true';
+    if (!isAdmin) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    }
+
     const body = await request.json();
-    const { theme, layoutOrder, resumeUrl, bentoData } = body;
+    const { 
+      theme, 
+      layoutOrder, 
+      resumeUrl, 
+      userImage, 
+      bentoData, 
+      aiMethod, 
+      geminiApiKey, 
+      geminiProxyUrl, 
+      geminiProxyKey 
+    } = body;
 
     const updateData = {};
     if (theme) updateData.theme = theme;
     if (layoutOrder) updateData.layoutOrder = JSON.stringify(layoutOrder);
     if (resumeUrl !== undefined) updateData.resumeUrl = resumeUrl;
+    if (userImage !== undefined) updateData.userImage = userImage;
     if (bentoData) updateData.bentoData = JSON.stringify(bentoData);
+    if (aiMethod) updateData.aiMethod = aiMethod;
+    if (geminiApiKey !== undefined) updateData.geminiApiKey = geminiApiKey;
+    if (geminiProxyUrl !== undefined) updateData.geminiProxyUrl = geminiProxyUrl;
+    if (geminiProxyKey !== undefined) updateData.geminiProxyKey = geminiProxyKey;
 
-    // Get existing config
     const existingConfig = await prisma.config.findFirst();
 
     let config;
     if (existingConfig) {
-      // Update existing
       config = await prisma.config.update({
         where: { id: existingConfig.id },
         data: updateData,
       });
     } else {
-      // Create new with defaults
       config = await prisma.config.create({
         data: {
           theme: theme || 'dark',
           layoutOrder: JSON.stringify(layoutOrder || ['hero', 'projects', 'timeline', 'bento', 'contact']),
           resumeUrl: resumeUrl || null,
+          userImage: userImage || null,
           bentoData: bentoData ? JSON.stringify(bentoData) : null,
+          aiMethod: aiMethod || 'official',
+          geminiApiKey: geminiApiKey || null,
+          geminiProxyUrl: geminiProxyUrl || null,
+          geminiProxyKey: geminiProxyKey || null,
         },
       });
     }

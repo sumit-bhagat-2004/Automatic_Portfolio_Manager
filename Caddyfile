@@ -1,0 +1,7 @@
+www.bhagatsumit.xyz {
+    redir https://bhagatsumit.xyz{uri}
+}
+
+bhagatsumit.xyz {
+    reverse_proxy localhost:3000
+}
