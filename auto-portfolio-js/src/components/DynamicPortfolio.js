@@ -70,7 +70,7 @@ export default function DynamicPortfolio() {
   return (
     <div className="relative min-h-screen bg-black text-white overflow-x-hidden">
       <AnimatedBackground />
-      <FloatingNavbar sections={layoutOrder} />
+      <FloatingNavbar config={config} sections={layoutOrder} />
       
       {layoutOrder.map((sectionName, index) => {
         const SectionComponent = sectionComponents[sectionName];
