@@ -158,11 +158,29 @@ CRITICAL RULES:
       body = { contents };
     }
 
-    const geminiRes = await fetch(url, {
-      method: 'POST',
-      headers,
-      body: JSON.stringify(body),
-    });
+    // Add a 30-second timeout to prevent hanging
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), 30000);
+
+    let geminiRes;
+    try {
+      console.log(`[chat] Calling AI endpoint: ${url.replace(/key=([^&]+)/, 'key=REDACTED')}`);
+      geminiRes = await fetch(url, {
+        method: 'POST',
+        headers,
+        body: JSON.stringify(body),
+        signal: controller.signal,
+      });
+    } catch (fetchErr) {
+      clearTimeout(timeoutId);
+      if (fetchErr.name === 'AbortError') {
+        console.error('[chat] AI request timed out after 30s');
+        return NextResponse.json({ error: 'AI request timed out. Please try again.' }, { status: 504 });
+      }
+      console.error('[chat] Network fetch error:', fetchErr.message);
+      return NextResponse.json({ error: `Failed to reach AI service: ${fetchErr.message}` }, { status: 502 });
+    }
+    clearTimeout(timeoutId);
 
     if (!geminiRes.ok) {
       const errText = await geminiRes.text();

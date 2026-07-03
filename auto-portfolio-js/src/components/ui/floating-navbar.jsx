@@ -82,13 +82,18 @@ export const FloatingNavbar = () => {
               ))}
             </div>
           {/* Mobile Menu Button */}
-          <div className="sm:hidden flex items-center justify-between">
-            <span className="text-white font-semibold">Menu</span>
+          <div className="sm:hidden flex items-center justify-between w-full">
+            <span className="text-white font-semibold text-sm">Menu</span>
             <button
-              onClick={() => setMobileOpen(!mobileOpen)}
-              className="text-white p-2 hover:bg-white/10 rounded-full transition-colors"
+              type="button"
+              onClick={(e) => { e.stopPropagation(); setMobileOpen(prev => !prev); }}
+              onTouchEnd={(e) => { e.preventDefault(); e.stopPropagation(); setMobileOpen(prev => !prev); }}
+              className="text-white p-3 hover:bg-white/10 active:bg-white/20 rounded-full transition-colors relative z-[60]"
+              style={{ touchAction: 'manipulation', WebkitTapHighlightColor: 'transparent', minWidth: '44px', minHeight: '44px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
+              aria-label="Toggle mobile menu"
+              aria-expanded={mobileOpen}
             >
-              {mobileOpen ? <X size={20} /> : <Menu size={20} />}
+              {mobileOpen ? <X size={22} /> : <Menu size={22} />}
             </button>
           </div>
         </div>
