@@ -1,8 +1,8 @@
 # Build stage
-FROM node:18-alpine AS builder
+FROM node:20-alpine AS builder
 
-# Install OpenSSL for Prisma compatibility
-RUN apk add --no-cache openssl
+# Install OpenSSL and updated CA certificates for TLS compatibility
+RUN apk add --no-cache openssl ca-certificates
 
 WORKDIR /app
 
@@ -23,10 +23,10 @@ RUN npx prisma generate
 RUN npm run build
 
 # Production stage
-FROM node:18-alpine
+FROM node:20-alpine
 
-# Install OpenSSL for Prisma compatibility
-RUN apk add --no-cache openssl
+# Install OpenSSL and updated CA certificates for TLS compatibility
+RUN apk add --no-cache openssl ca-certificates
 
 WORKDIR /app
 
